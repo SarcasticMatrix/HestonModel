@@ -1,5 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt 
+from collections import namedtuple
+from numpy import random
+random.seed(42)
 
 class HestonModel:
     def __init__(self, S0, V0, r, kappa, theta, drift_emm, sigma, rho, T, K):
@@ -30,6 +33,7 @@ class HestonModel:
         """
         Simulates and returns several simulated paths following the Heston model
         Input: 
+            - scheme (str): the discretization scheme used
             - n (int): number of points in a path
             - N (int): number of simulated paths
         Ouput:
@@ -52,7 +56,7 @@ class HestonModel:
             if np.any(V[:, i-1] < 0):
                 V[:, i-1] = np.abs(V[:, i-1])
 
-            if np.any(V[i-1, :] == 0):
+            if np.any(V[:, i-1] == 0):
                 null_variance += np.sum(V[i-1, :] == 0) 
 
             # Brownian motion
@@ -66,6 +70,7 @@ class HestonModel:
             V[:, i] = V[:, i-1] + (self.kappa * (self.theta - V[:, i-1]) - self.drift_emm * V[:, i-1]) * dt + self.sigma * np.sqrt(V[:, i-1]) * ZV 
             if scheme == "milstein":
                 S[:, i] += 1/2 * V[:, i-1] * S[:, i-1] * (ZS**2 - dt) 
+                #S[:, i] += 1/4 * S[:, i-1]**2 * (ZS**2 - dt) 
                 V[:, i] += 1/4 * self.sigma**2 * (ZV**2 - dt)
             elif scheme == 'euler':
                 pass
@@ -74,7 +79,7 @@ class HestonModel:
 
         return S, V, null_variance
 
-    def monte_carlo_call_price(self,
+    def monte_carlo_price(self,
                                scheme: str = "euler",
                                n: int = 100,
                                N: int = 1000
@@ -86,8 +91,11 @@ class HestonModel:
             - n (int): number of points in a path
             - N (int): number of simulated paths
         Ouput:
-            - call_price (float): estimation by Monte Carlo of the call price
-            - standard_deviation (float): standard deviation of the option payoff 
+            - result (namedtuple): with the following attribute
+                - price (float): estimation by Monte Carlo of the call price
+                - standard_deviation (float): standard deviation of the option payoff 
+                - infimum (float): infimum of the confidence interval
+                - supremum (float): supremum of the confidence interval
         """
                 
         S, _, null_variance = self.simulate(scheme, n, N)
@@ -97,25 +105,28 @@ class HestonModel:
         payoff = np.maximum(ST - self.K, 0)
         discounted_payoff = np.exp(-self.r * self.T) * payoff
 
-        call_price = np.mean(discounted_payoff)
+        price = np.mean(discounted_payoff)
         standard_deviation = np.std(discounted_payoff, ddof=1)/np.sqrt(N)
+        infimum = price - 1.96 * np.sqrt(standard_deviation / N)
+        supremum = price + 1.96 * np.sqrt(standard_deviation / N)
 
-        return call_price, standard_deviation
+        Result = namedtuple('Results','price std infinum supremum')
+        return Result(price, standard_deviation, infimum, supremum) # price, standard_deviation, infimum, supremum
 
-    def plot_simulation(self, n: int = 1000):
-        S, V, _ = self.simulate(n=n)
+    def plot_simulation(self, scheme : str = 'euler', n: int = 1000):
+        S, V, _ = self.simulate(n=n, scheme=scheme)
 
         fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True)
 
-        ax1.plot(np.linspace(0,1,n+1), S[0, :], label='Stock', color='blue', linewidth=1)
-        ax1.set_xlabel('Time [h]', fontsize=12)
-        ax1.set_ylabel('Stock Price [$]', fontsize=12)
+        ax1.plot(np.linspace(0,1,n+1), S[0, :], label='Risky asset', color='blue', linewidth=1)
+        ax1.set_ylabel('Value [$]', fontsize=12)
 
+        #ax2.plot(np.linspace(0,1,n+1), np.sqrt(V[0, :]), label='Volatility', color='orange', linestyle='dotted', linewidth=1)
         ax2.plot(np.linspace(0,1,n+1), V[0, :], label='Variance', color='orange', linewidth=1)
         ax2.set_xlabel('Time [h]', fontsize=12)
         ax2.set_ylabel('Variance', fontsize=12)
 
-        fig.suptitle('Heston Model Simulation', fontsize=16)
+        fig.suptitle(f'Heston Model Simulation with {scheme} scheme', fontsize=16)
         plt.tight_layout()
         plt.show()
 
@@ -133,15 +144,23 @@ if __name__ == "__main__":
     K = 100
 
     heston = HestonModel(S0, V0, r, kappa, theta, drift_emm, sigma, rho, T, K)
-    call_price_euler, call_std_euler = heston.monte_carlo_call_price(scheme="euler", n=100, N=1000)
-    call_price_euler = round(call_price_euler, 2)
-    call_std_euler = round(call_std_euler, 2)
-    print(f"Call price and std with Euler scheme: ${call_price_euler} and {call_std_euler}")
 
-    call_price_milstein, call_std_milstein = heston.monte_carlo_call_price(scheme="milstein", n=100, N=1000)
-    call_price_milstein = round(call_price_milstein, 2)
-    call_std_milstein = round(call_std_milstein, 2)
-    print(f"Call price and std with Milstein scheme: ${call_price_milstein} and {call_std_milstein}")
+    n = 100
+    N = 1000
 
+    result = heston.monte_carlo_price(scheme="euler", n=n, N=N)
+    price_euler = round(result.price, 2)
+    std_euler = round(result.std, 2)
+    infinum_euler = round(result.infinum, 2)
+    supremum_euler = round(result.supremum, 2)
+    print(f"Euler scheme : price ${price_euler}, std {std_euler}, and Confidence interval [{infinum_euler},{supremum_euler}]")
 
-    heston.plot_simulation()
+    result = heston.monte_carlo_price(scheme="milstein", n=n, N=N)
+    price_milstein = round(result.price, 2)
+    std_milstein = round(result.std, 2)
+    infinum_milstein = round(result.infinum, 2)
+    supremum_milstein = round(result.supremum, 2)
+    print(f"Milstein scheme : price ${price_milstein}, std {std_milstein}, and Confidence interval [{infinum_milstein},{supremum_milstein}]")
+
+    # scheme = 'milstein'
+    # heston.plot_simulation(scheme)
