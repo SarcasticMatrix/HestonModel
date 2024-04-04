@@ -1,4 +1,5 @@
 import numpy as np
+import matplotlib.pyplot as plt 
 
 class HestonModel:
     def __init__(self, S0, V0, r, kappa, theta, drift_emm, sigma, rho, T, K):
@@ -25,6 +26,7 @@ class HestonModel:
                 n: int = 100, 
                 N:int = 1000
         ) -> tuple:
+        # generateHestonPathEulerDisc and generateHestonPathMilsteinDisc
         """
         Simulates and returns several simulated paths following the Heston model
         Input: 
@@ -46,7 +48,7 @@ class HestonModel:
 
         for i in range(1, n+1):
 
-            # Apply truncation scheme 
+            # Apply reflection scheme 
             if np.any(V[:, i-1] < 0):
                 V[:, i-1] = np.abs(V[:, i-1])
 
@@ -77,6 +79,7 @@ class HestonModel:
                                n: int = 100,
                                N: int = 1000
                             ) -> float:
+        # priceHestonCallViaEulerMC and priceHestonCallViaMilsteinMC
         """
         Simulates sample paths, then estimation the call price with a simple Monte Carlo Method
         Input: 
@@ -95,9 +98,26 @@ class HestonModel:
         discounted_payoff = np.exp(-self.r * self.T) * payoff
 
         call_price = np.mean(discounted_payoff)
-        standard_deviation = np.std(discounted_payoff)
+        standard_deviation = np.std(discounted_payoff, ddof=1)/np.sqrt(N)
 
         return call_price, standard_deviation
+
+    def plot_simulation(self, n: int = 1000):
+        S, V, _ = self.simulate(n=n)
+
+        fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True)
+
+        ax1.plot(np.linspace(0,1,n+1), S[0, :], label='Stock', color='blue', linewidth=1)
+        ax1.set_xlabel('Time [h]', fontsize=12)
+        ax1.set_ylabel('Stock Price [$]', fontsize=12)
+
+        ax2.plot(np.linspace(0,1,n+1), V[0, :], label='Variance', color='orange', linewidth=1)
+        ax2.set_xlabel('Time [h]', fontsize=12)
+        ax2.set_ylabel('Variance', fontsize=12)
+
+        fig.suptitle('Heston Model Simulation', fontsize=16)
+        plt.tight_layout()
+        plt.show()
 
 
 if __name__ == "__main__":
@@ -116,9 +136,12 @@ if __name__ == "__main__":
     call_price_euler, call_std_euler = heston.monte_carlo_call_price(scheme="euler", n=100, N=1000)
     call_price_euler = round(call_price_euler, 2)
     call_std_euler = round(call_std_euler, 2)
-    print(f"Call price and std with Euler scheme: {call_price_euler} and {call_std_euler}")
+    print(f"Call price and std with Euler scheme: ${call_price_euler} and {call_std_euler}")
 
     call_price_milstein, call_std_milstein = heston.monte_carlo_call_price(scheme="milstein", n=100, N=1000)
     call_price_milstein = round(call_price_milstein, 2)
     call_std_milstein = round(call_std_milstein, 2)
-    print(f"Call price and std with Milstein scheme: {call_price_milstein} and {call_std_milstein}")
+    print(f"Call price and std with Milstein scheme: ${call_price_milstein} and {call_std_milstein}")
+
+
+    heston.plot_simulation()
