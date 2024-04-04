@@ -5,6 +5,9 @@ from numpy import random
 random.seed(42)
 
 class HestonModel:
+    """
+    Class to represent a Heston Model : can simulate trajectories and price call options with this underlying
+    """
     def __init__(self, S0, V0, r, kappa, theta, drift_emm, sigma, rho, T, K):
 
         # Simulation parameters
