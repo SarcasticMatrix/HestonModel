@@ -1,8 +1,11 @@
 import numpy as np
-import matplotlib.pyplot as plt 
-from collections import namedtuple
 from numpy import random
 random.seed(42)
+
+from scipy.integrate import quad # compute integral
+
+import matplotlib.pyplot as plt 
+from collections import namedtuple
 
 class HestonModel:
     """
@@ -133,8 +136,33 @@ class HestonModel:
         plt.tight_layout()
         plt.show()
 
+    def characteristic(
+            self,
+            j: int
+        ) -> float:
+
+        if j == 1 : 
+            uj = 1/2 
+            bj = self.kappa + self.drift_emm - self.rho * self.sigma
+        elif j == 2:
+            uj = - 1/2
+            bj = self.kappa + self.drift_emm
+        else: 
+            print('Argument j (int) must be 1 or 2')
+            return 0
+        a = self.kappa * self.theta 
+
+
+        dj = lambda u : np.sqrt((self.rho * self.sigma * u * 1j)**2 - self.sigma**2 * (2 * uj * u * 1j - u**2))
+        gj = lambda u : (bj - self.rho * self.sigma * u *1j + dj(u))/(bj - self.rho * self.sigma * u *1j - dj(u))
+
+        Cj = lambda tau, u : self.r * u * tau * 1j + a/self.sigma**2 * ((bj - self.rho * self.sigma * u * 1j + dj(u)) * tau - 2 * np.log((1-gj(u)*np.exp(dj(u)*tau))/(1-np.exp(dj(u)*tau))))  
+        Dj = lambda tau, u : (bj - self.rho * self.sigma * u * 1j + dj(u))/self.sigma**2 * (1-np.exp(dj(u) * tau))/(1-gj(u) * np.exp(dj(u)*tau))
+        
+        return lambda x, v, t, u : np.exp(Cj(T-t,u) + Dj(T-t,u)*v + u * x * 1j)
 
 if __name__ == "__main__":
+
     S0 = 100
     V0 = 0.06
     r = 0.05
@@ -167,3 +195,31 @@ if __name__ == "__main__":
 
     # scheme = 'milstein'
     # heston.plot_simulation(scheme)
+
+    psi1 = heston.characteristic(j=1)
+    psi2 = heston.characteristic(j=2)
+
+    u = np.arange(start=-10, stop=10,step=0.01)
+
+    x = np.log(S0)
+    v = V0
+    t = T - 1 
+
+    # 2D plot
+    plt.figure()
+    plt.plot(u, psi1(x, v, t, u), label='Psi_1')
+    plt.plot(u, psi2(x, v, t, u), label='Psi_2')
+    plt.legend()
+    plt.show()    
+
+
+    # 3D plot
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    ax.plot(u, psi1(x, v, t, u).real, psi1(x, v, t, u).imag, label='Psi_1')
+    ax.plot(u, psi2(x, v, t, u).real, psi2(x, v, t, u).imag, label='Psi_2')
+    ax.set_xlabel('u')
+    ax.set_ylabel('Real part')
+    ax.set_zlabel('Imaginary part')
+    plt.legend()
+    plt.show()
