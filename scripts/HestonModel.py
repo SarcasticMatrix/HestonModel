@@ -162,14 +162,17 @@ class HestonModel:
 
         psi1 = self.characteristic(j=1)
         integrand1 = lambda u : np.real((np.exp(-u * np.log(self.K) * 1j) * psi1(x, v, t, u))/(u*1j)) 
-        Q1 = 1/2 + 1/np.pi * quad(func = integrand1, a = 0, b = 100)[0]
+        Q1 = 1/2 + 1/np.pi * quad(func = integrand1, a = 0, b = 1000)[0]
+        error1 = 1/np.pi * quad(func = integrand1, a = 0, b = 1000)[1]
 
         psi2 = self.characteristic(j=2)
         integrand2 = lambda u : np.real((np.exp(-u * np.log(self.K) * 1j) * psi2(x, v, t, u))/(u*1j)) 
-        Q2 = 1/2 + 1/np.pi * quad(func = integrand2, a = 0, b = 100)[0]
+        Q2 = 1/2 + 1/np.pi * quad(func = integrand2, a = 0, b = 1000)[0]
+        error2 = 1/np.pi * quad(func = integrand2, a = 0, b = 1000)[1]
 
         price = self.S0 * Q1 - self.K * np.exp(-self.r * (self.T - t)) * Q2
-        return price
+        error = self.S0 * error1 + self.K * np.exp(-self.r * (self.T - t)) * error2
+        return price, error
 
 
     def plot_simulation(self, scheme : str = 'euler', n: int = 1000):
@@ -229,11 +232,13 @@ if __name__ == "__main__":
 
     ### Price via Fourier Transform
 
-    price_FT = heston.fourier_transform_price()
+    price_FT, error_FT = heston.fourier_transform_price()
     price_FT = round(price_FT, 2)
-    print(f"Fourier Transform : price ${price_FT}, std , and Confidence interval [,]")
+    error_FT = round(error_FT, 8)
+    print(f"Fourier Transform : price ${price_FT}, error ${error_FT} , and Confidence interval [{price_FT-error_FT},{price_FT+error_FT}]")
 
     print("Pricing...finished\n")
+
     ### Path simulations
 
     scheme = 'milstein'
@@ -249,6 +254,7 @@ if __name__ == "__main__":
     x = np.log(S0)
     v = V0
     t = T - 1 
+
 
     # 2D plot
     # Create subplots for real and imaginary parts
@@ -276,7 +282,7 @@ if __name__ == "__main__":
     plt.ylabel('Imaginary part')
     plt.legend()
 
-    plt.tight_layout()
+    #plt.tight_layout()
     plt.show() 
 
 
@@ -293,3 +299,20 @@ if __name__ == "__main__":
     ax.set_zlabel('Imaginary part')
     plt.legend()
     plt.show()
+
+    # ## Integration over R_+
+    # psi1 = heston.characteristic(j=1)
+    # integrand1 = lambda u : np.real((np.exp(-u * np.log(heston.K) * 1j) * psi1(x, v, t, u))/(u*1j)) 
+    # psi2 = heston.characteristic(j=2)
+    # integrand2 = lambda u : np.real((np.exp(-u * np.log(heston.K) * 1j) * psi2(x, v, t, u))/(u*1j)) 
+
+    # u = np.arange(start=0, stop=40,step=0.01)
+
+    # plt.figure()
+    # plt.plot(u, integrand1(u) * u**2, label="Integrand 1")
+    # plt.plot(u, integrand2(u) * u**2, label="Integrand 2")
+    # plt.xlabel(r'u')
+    # plt.ylabel(r'Integrand $\times u^2$')
+    # plt.legend()
+    # plt.title(r'Existence of $Q_1$ and $Q_2$')
+    # plt.show()
