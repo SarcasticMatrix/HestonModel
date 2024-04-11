@@ -1,5 +1,6 @@
 import numpy as np
 from numpy import random
+import time
 random.seed(42)
 
 from scipy.integrate import quad # compute integral
@@ -47,6 +48,7 @@ class HestonModel:
             - V (np.array): variance paths
             - null_variance (int): number of time the simulated variance has been null 
         """
+        random.seed(42)
 
         dt = self.T / n
         S = np.zeros((N, n + 1))
@@ -103,7 +105,8 @@ class HestonModel:
                 - infimum (float): infimum of the confidence interval
                 - supremum (float): supremum of the confidence interval
         """
-                
+        random.seed(42)
+
         S, _, null_variance = self.simulate(scheme, n, N)
         print(f"Variance has been null {null_variance} times over the {n*N} iterations ({round(null_variance/(n*N)*100,2)}%) ")
 
@@ -214,28 +217,34 @@ if __name__ == "__main__":
     ### Price via Monte Carlo
 
     n = 100
-    N = 1000
+    N = 10**6
 
+    start_time = time.time()
     result = heston.monte_carlo_price(scheme="euler", n=n, N=N)
+    time_delta = round(time.time() - start_time,4)
     price_euler = round(result.price, 2)
     std_euler = round(result.std, 2)
     infinum_euler = round(result.infinum, 2)
     supremum_euler = round(result.supremum, 2)
-    print(f"Monte Carlo Euler scheme : price ${price_euler}, std {std_euler}, and Confidence interval [{infinum_euler},{supremum_euler}]")
+    print(f"Monte Carlo Euler scheme in {time_delta}s : price ${price_euler}, std {std_euler}, and Confidence interval [{infinum_euler},{supremum_euler}]")
 
+    start_time = time.time()
     result = heston.monte_carlo_price(scheme="milstein", n=n, N=N)
+    time_delta = round(time.time() - start_time,4)
     price_milstein = round(result.price, 2)
     std_milstein = round(result.std, 2)
     infinum_milstein = round(result.infinum, 2)
     supremum_milstein = round(result.supremum, 2)
-    print(f"Monte Carlo Milstein scheme : price ${price_milstein}, std {std_milstein}, and Confidence interval [{infinum_milstein},{supremum_milstein}]")
+    print(f"Monte Carlo Milstein scheme in {time_delta}s : price ${price_milstein}, std {std_milstein}, and Confidence interval [{infinum_milstein},{supremum_milstein}]")
 
     ### Price via Fourier Transform
 
+    start_time = time.time()
     price_FT, error_FT = heston.fourier_transform_price()
+    time_delta = round(time.time() - start_time,4)
     price_FT = round(price_FT, 2)
     error_FT = round(error_FT, 8)
-    print(f"Fourier Transform : price ${price_FT}, error ${error_FT} , and Confidence interval [{price_FT-error_FT},{price_FT+error_FT}]")
+    print(f"Fourier Transform in {time_delta}s : price ${price_FT}, error ${error_FT} , and Confidence interval [{price_FT-error_FT},{price_FT+error_FT}]")
 
     print("Pricing...finished\n")
 
@@ -300,19 +309,20 @@ if __name__ == "__main__":
     plt.legend()
     plt.show()
 
-    # ## Integration over R_+
-    # psi1 = heston.characteristic(j=1)
-    # integrand1 = lambda u : np.real((np.exp(-u * np.log(heston.K) * 1j) * psi1(x, v, t, u))/(u*1j)) 
-    # psi2 = heston.characteristic(j=2)
-    # integrand2 = lambda u : np.real((np.exp(-u * np.log(heston.K) * 1j) * psi2(x, v, t, u))/(u*1j)) 
+    ## Integration over R_+
+    psi1 = heston.characteristic(j=1)
+    integrand1 = lambda u : np.real((np.exp(-u * np.log(heston.K) * 1j) * psi1(x, v, t, u))/(u*1j)) 
+    psi2 = heston.characteristic(j=2)
+    integrand2 = lambda u : np.real((np.exp(-u * np.log(heston.K) * 1j) * psi2(x, v, t, u))/(u*1j)) 
 
-    # u = np.arange(start=0, stop=40,step=0.01)
+    u = np.arange(start=0, stop=40,step=0.01)
 
-    # plt.figure()
-    # plt.plot(u, integrand1(u) * u**2, label="Integrand 1")
-    # plt.plot(u, integrand2(u) * u**2, label="Integrand 2")
-    # plt.xlabel(r'u')
-    # plt.ylabel(r'Integrand $\times u^2$')
-    # plt.legend()
-    # plt.title(r'Existence of $Q_1$ and $Q_2$')
-    # plt.show()
+    plt.figure()
+    plt.plot(u, integrand1(u) * u**2, label="Integrand 1")
+    plt.plot(u, integrand2(u) * u**2, label="Integrand 2")
+    plt.xlabel(r'u')
+    plt.ylabel(r'Integrand $\times u^2$')
+    plt.legend()
+    plt.grid(visible=True)
+    plt.title(r'Existence of $Q_1$ and $Q_2$')
+    plt.show()
