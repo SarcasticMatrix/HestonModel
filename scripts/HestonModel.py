@@ -119,6 +119,59 @@ class HestonModel:
         Result = namedtuple('Results','price std infinum supremum')
         return Result(price, standard_deviation, infimum, supremum) # price, standard_deviation, infimum, supremum
 
+    def characteristic(
+            self,
+            j: int
+        ) -> float:
+        """
+        Create the characteristic function Psi_j(x, v, t; u), for a given (x, v, t):
+            - x : ln(S), log of the stock
+            - v : V, the variance 
+            - t : time, tau = T - t
+        """
+
+        if j == 1 : 
+            uj = 1/2 
+            bj = self.kappa + self.drift_emm - self.rho * self.sigma
+        elif j == 2:
+            uj = - 1/2
+            bj = self.kappa + self.drift_emm
+        else: 
+            print('Argument j (int) must be 1 or 2')
+            return 0
+        a = self.kappa * self.theta 
+
+        dj = lambda u : np.sqrt((self.rho * self.sigma * u * 1j - bj)**2 - self.sigma**2 * (2 * uj * u * 1j - u**2))
+        gj = lambda u : (self.rho * self.sigma * u *1j - bj - dj(u))/(self.rho * self.sigma * u *1j - bj + dj(u))
+
+        Cj = lambda tau, u : self.r * u * tau * 1j + a/self.sigma**2 * ((bj - self.rho * self.sigma * u * 1j + dj(u)) * tau - 2 * np.log((1-gj(u)*np.exp(dj(u)*tau))/(1-gj(u))))  
+        Dj = lambda tau, u : (bj - self.rho * self.sigma * u * 1j + dj(u))/self.sigma**2 * (1-np.exp(dj(u) * tau))/(1-gj(u) * np.exp(dj(u)*tau))
+
+        return lambda x, v, t, u : np.exp(Cj(T-t,u) + Dj(T-t,u)*v + u * x * 1j)
+    
+    def fourier_transform_price(
+            self,
+            t = 0
+    ):
+        """
+        Computes the price of a European call option on the underlying asset S following a Heston model
+        """
+
+        x = np.log(self.S0)
+        v = self.V0
+
+        psi1 = self.characteristic(j=1)
+        integrand1 = lambda u : np.real((np.exp(-u * np.log(self.K) * 1j) * psi1(x, v, t, u))/(u*1j)) 
+        Q1 = 1/2 + 1/np.pi * quad(func = integrand1, a = 0.001, b = 100)[0]
+
+        psi2 = self.characteristic(j=2)
+        integrand2 = lambda u : np.real((np.exp(-u * np.log(self.K) * 1j) * psi2(x, v, t, u))/(u*1j)) 
+        Q2 = 1/2 + 1/np.pi * quad(func = integrand2, a = 0.001, b = 100)[0]
+
+        price = self.S0 * Q1 - self.K * np.exp(-self.r * (self.T - t)) * Q2
+        return price
+
+
     def plot_simulation(self, scheme : str = 'euler', n: int = 1000):
         S, V, _ = self.simulate(n=n, scheme=scheme)
 
@@ -136,32 +189,9 @@ class HestonModel:
         plt.tight_layout()
         plt.show()
 
-    def characteristic(
-            self,
-            j: int
-        ) -> float:
-
-        if j == 1 : 
-            uj = 1/2 
-            bj = self.kappa + self.drift_emm - self.rho * self.sigma
-        elif j == 2:
-            uj = - 1/2
-            bj = self.kappa + self.drift_emm
-        else: 
-            print('Argument j (int) must be 1 or 2')
-            return 0
-        a = self.kappa * self.theta 
-
-
-        dj = lambda u : np.sqrt((self.rho * self.sigma * u * 1j)**2 - self.sigma**2 * (2 * uj * u * 1j - u**2))
-        gj = lambda u : (bj - self.rho * self.sigma * u *1j + dj(u))/(bj - self.rho * self.sigma * u *1j - dj(u))
-
-        Cj = lambda tau, u : self.r * u * tau * 1j + a/self.sigma**2 * ((bj - self.rho * self.sigma * u * 1j + dj(u)) * tau - 2 * np.log((1-gj(u)*np.exp(dj(u)*tau))/(1-np.exp(dj(u)*tau))))  
-        Dj = lambda tau, u : (bj - self.rho * self.sigma * u * 1j + dj(u))/self.sigma**2 * (1-np.exp(dj(u) * tau))/(1-gj(u) * np.exp(dj(u)*tau))
-        
-        return lambda x, v, t, u : np.exp(Cj(T-t,u) + Dj(T-t,u)*v + u * x * 1j)
-
 if __name__ == "__main__":
+
+    ### Initialisation of the model
 
     S0 = 100
     V0 = 0.06
@@ -176,6 +206,10 @@ if __name__ == "__main__":
 
     heston = HestonModel(S0, V0, r, kappa, theta, drift_emm, sigma, rho, T, K)
 
+    print("\nPricing...")
+
+    ### Price via Monte Carlo
+
     n = 100
     N = 1000
 
@@ -184,22 +218,33 @@ if __name__ == "__main__":
     std_euler = round(result.std, 2)
     infinum_euler = round(result.infinum, 2)
     supremum_euler = round(result.supremum, 2)
-    print(f"Euler scheme : price ${price_euler}, std {std_euler}, and Confidence interval [{infinum_euler},{supremum_euler}]")
+    print(f"Monte Carlo Euler scheme : price ${price_euler}, std {std_euler}, and Confidence interval [{infinum_euler},{supremum_euler}]")
 
     result = heston.monte_carlo_price(scheme="milstein", n=n, N=N)
     price_milstein = round(result.price, 2)
     std_milstein = round(result.std, 2)
     infinum_milstein = round(result.infinum, 2)
     supremum_milstein = round(result.supremum, 2)
-    print(f"Milstein scheme : price ${price_milstein}, std {std_milstein}, and Confidence interval [{infinum_milstein},{supremum_milstein}]")
+    print(f"Monte Carlo Milstein scheme : price ${price_milstein}, std {std_milstein}, and Confidence interval [{infinum_milstein},{supremum_milstein}]")
 
-    # scheme = 'milstein'
-    # heston.plot_simulation(scheme)
+    ### Price via Fourier Transform
+
+    price_FT = heston.fourier_transform_price()
+    price_FT = round(price_FT, 2)
+    print(f"Fourier Transform : price ${price_FT}, std , and Confidence interval [,]")
+
+    print("Pricing...finished\n")
+    ### Path simulations
+
+    scheme = 'milstein'
+    heston.plot_simulation(scheme)
+
+    ### Characteristic function
 
     psi1 = heston.characteristic(j=1)
     psi2 = heston.characteristic(j=2)
 
-    u = np.arange(start=-10, stop=10,step=0.01)
+    u = np.arange(start=0, stop=30,step=0.01)
 
     x = np.log(S0)
     v = V0
@@ -207,8 +252,9 @@ if __name__ == "__main__":
 
     # 2D plot
     plt.figure()
-    plt.plot(u, psi1(x, v, t, u), label='Psi_1')
-    plt.plot(u, psi2(x, v, t, u), label='Psi_2')
+    plt.plot(u, np.abs(psi1(x, v, t, u)), label=r'$|\psi_1|$', color='orange', linestyle='--')
+    plt.plot(u, psi1(x, v, t, u), label=r'$\psi_1$', color='orange')
+    plt.plot(u, psi2(x, v, t, u), label=r'$\psi_2$', color='blue')
     plt.legend()
     plt.show()    
 
@@ -216,8 +262,11 @@ if __name__ == "__main__":
     # 3D plot
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
-    ax.plot(u, psi1(x, v, t, u).real, psi1(x, v, t, u).imag, label='Psi_1')
-    ax.plot(u, psi2(x, v, t, u).real, psi2(x, v, t, u).imag, label='Psi_2')
+    ax.plot(u, psi1(x, v, t, u).real, psi1(x, v, t, u).imag, label=r'$\psi_1$', color='orange')
+    ax.plot(u, psi2(x, v, t, u).real, psi2(x, v, t, u).imag, label=r'$\psi_2$', color='blue')
+    ax.set_xticks([5*i for i in range(6)])
+    ax.set_yticks([-1, 0, 1])
+    ax.set_zticks([-1, 0, 1])
     ax.set_xlabel('u')
     ax.set_ylabel('Real part')
     ax.set_zlabel('Imaginary part')
