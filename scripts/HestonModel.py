@@ -162,11 +162,11 @@ class HestonModel:
 
         psi1 = self.characteristic(j=1)
         integrand1 = lambda u : np.real((np.exp(-u * np.log(self.K) * 1j) * psi1(x, v, t, u))/(u*1j)) 
-        Q1 = 1/2 + 1/np.pi * quad(func = integrand1, a = 0.001, b = 100)[0]
+        Q1 = 1/2 + 1/np.pi * quad(func = integrand1, a = 0, b = 100)[0]
 
         psi2 = self.characteristic(j=2)
         integrand2 = lambda u : np.real((np.exp(-u * np.log(self.K) * 1j) * psi2(x, v, t, u))/(u*1j)) 
-        Q2 = 1/2 + 1/np.pi * quad(func = integrand2, a = 0.001, b = 100)[0]
+        Q2 = 1/2 + 1/np.pi * quad(func = integrand2, a = 0, b = 100)[0]
 
         price = self.S0 * Q1 - self.K * np.exp(-self.r * (self.T - t)) * Q2
         return price
@@ -244,19 +244,40 @@ if __name__ == "__main__":
     psi1 = heston.characteristic(j=1)
     psi2 = heston.characteristic(j=2)
 
-    u = np.arange(start=0, stop=30,step=0.01)
+    u = np.arange(start=-20, stop=20,step=0.01)
 
     x = np.log(S0)
     v = V0
     t = T - 1 
 
     # 2D plot
+    # Create subplots for real and imaginary parts
     plt.figure()
+
+    # Plot real part of psi1 and psi2
+    plt.subplot(1, 2, 1)
+    plt.title(r'$\mathfrak{Re}(\psi_1)$ and $\mathfrak{Re}(\psi_2)$')
     plt.plot(u, np.abs(psi1(x, v, t, u)), label=r'$|\psi_1|$', color='orange', linestyle='--')
-    plt.plot(u, psi1(x, v, t, u), label=r'$\psi_1$', color='orange')
-    plt.plot(u, psi2(x, v, t, u), label=r'$\psi_2$', color='blue')
+    plt.plot(u, psi1(x, v, t, u).real, label=r'$\psi_1$', color='orange')
+    plt.plot(u, psi2(x, v, t, u).real, label=r'$\psi_2$', color='blue')
+    plt.grid(visible=True)
+    plt.xlabel(r'$u$')
+    plt.ylabel('Real part')
     plt.legend()
-    plt.show()    
+
+    # Plot imaginary part of psi1 and psi2
+    plt.subplot(1, 2, 2)
+    plt.title(r'$\mathfrak{Im}(\psi_1)$ and $\mathfrak{Im}(\psi_2)$')
+    plt.plot(u, np.abs(psi1(x, v, t, u)), label=r'$|\psi_1|$', color='orange', linestyle='--')
+    plt.plot(u, psi1(x, v, t, u).imag, label=r'$\psi_1$', color='orange')
+    plt.plot(u, psi2(x, v, t, u).imag, label=r'$\psi_2$', color='blue')
+    plt.grid(visible=True)
+    plt.xlabel(r'$u$')
+    plt.ylabel('Imaginary part')
+    plt.legend()
+
+    plt.tight_layout()
+    plt.show() 
 
 
     # 3D plot
@@ -264,7 +285,7 @@ if __name__ == "__main__":
     ax = fig.add_subplot(111, projection='3d')
     ax.plot(u, psi1(x, v, t, u).real, psi1(x, v, t, u).imag, label=r'$\psi_1$', color='orange')
     ax.plot(u, psi2(x, v, t, u).real, psi2(x, v, t, u).imag, label=r'$\psi_2$', color='blue')
-    ax.set_xticks([5*i for i in range(6)])
+    ax.set_xticks([-5*i for i in range(6)] + [5*i for i in range(6)])
     ax.set_yticks([-1, 0, 1])
     ax.set_zticks([-1, 0, 1])
     ax.set_xlabel('u')
