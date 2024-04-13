@@ -217,7 +217,7 @@ if __name__ == "__main__":
     ### Price via Monte Carlo
 
     n = 100
-    N = 10**6
+    N = 10**3
 
     start_time = time.time()
     result = heston.monte_carlo_price(scheme="euler", n=n, N=N)
