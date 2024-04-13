@@ -273,86 +273,86 @@ if __name__ == "__main__":
     infinum = round(price_CM-error_CM, 2)
     supremum = round(price_CM+error_CM, 2)
     price_CM = round(price_CM, 2)
-    error_CM = round(error_CM, 8)
+    #error_CM = round(error_CM, 8)
     print(f"Carr-Madan in {time_delta}s : price ${price_CM}, error ${error_CM} , and Confidence interval [{infinum},{supremum}]")
 
     print("Pricing...finished\n")
 
-    # ### Path simulations
+    ### Path simulations
 
-    # scheme = 'milstein'
-    # heston.plot_simulation(scheme)
+    scheme = 'milstein'
+    heston.plot_simulation(scheme)
 
-    # ### Characteristic function
+    ### Characteristic function
 
-    # psi1 = heston.characteristic(j=1)
-    # psi2 = heston.characteristic(j=2)
+    psi1 = heston.characteristic(j=1)
+    psi2 = heston.characteristic(j=2)
 
-    # u = np.arange(start=-20, stop=20,step=0.01)
+    u = np.arange(start=-20, stop=20,step=0.01)
 
-    # x = np.log(S0)
-    # v = V0
-    # t = T - 1 
-
-
-    # # 2D plot
-    # # Create subplots for real and imaginary parts
-    # plt.figure()
-
-    # # Plot real part of psi1 and psi2
-    # plt.subplot(1, 2, 1)
-    # plt.title(r'$\mathfrak{Re}(\psi_1)$ and $\mathfrak{Re}(\psi_2)$')
-    # plt.plot(u, np.abs(psi1(x, v, t, u)), label=r'$|\psi_1|$', color='orange', linestyle='--')
-    # plt.plot(u, psi1(x, v, t, u).real, label=r'$\psi_1$', color='orange')
-    # plt.plot(u, psi2(x, v, t, u).real, label=r'$\psi_2$', color='blue')
-    # plt.grid(visible=True)
-    # plt.xlabel(r'$u$')
-    # plt.ylabel('Real part')
-    # plt.legend()
-
-    # # Plot imaginary part of psi1 and psi2
-    # plt.subplot(1, 2, 2)
-    # plt.title(r'$\mathfrak{Im}(\psi_1)$ and $\mathfrak{Im}(\psi_2)$')
-    # plt.plot(u, np.abs(psi1(x, v, t, u)), label=r'$|\psi_1|$', color='orange', linestyle='--')
-    # plt.plot(u, psi1(x, v, t, u).imag, label=r'$\psi_1$', color='orange')
-    # plt.plot(u, psi2(x, v, t, u).imag, label=r'$\psi_2$', color='blue')
-    # plt.grid(visible=True)
-    # plt.xlabel(r'$u$')
-    # plt.ylabel('Imaginary part')
-    # plt.legend()
-
-    # #plt.tight_layout()
-    # plt.show() 
+    x = np.log(S0)
+    v = V0
+    t = T - 1 
 
 
-    # # 3D plot
-    # fig = plt.figure()
-    # ax = fig.add_subplot(111, projection='3d')
-    # ax.plot(u, psi1(x, v, t, u).real, psi1(x, v, t, u).imag, label=r'$\psi_1$', color='orange')
-    # ax.plot(u, psi2(x, v, t, u).real, psi2(x, v, t, u).imag, label=r'$\psi_2$', color='blue')
-    # ax.set_xticks([-5*i for i in range(6)] + [5*i for i in range(6)])
-    # ax.set_yticks([-1, 0, 1])
-    # ax.set_zticks([-1, 0, 1])
-    # ax.set_xlabel('u')
-    # ax.set_ylabel('Real part')
-    # ax.set_zlabel('Imaginary part')
-    # plt.legend()
-    # plt.show()
+    # 2D plot
+    # Create subplots for real and imaginary parts
+    plt.figure()
 
-    # ## Integration over R_+
-    # psi1 = heston.characteristic(j=1)
-    # integrand1 = lambda u : np.real((np.exp(-u * np.log(heston.K) * 1j) * psi1(x, v, t, u))/(u*1j)) 
-    # psi2 = heston.characteristic(j=2)
-    # integrand2 = lambda u : np.real((np.exp(-u * np.log(heston.K) * 1j) * psi2(x, v, t, u))/(u*1j)) 
+    # Plot real part of psi1 and psi2
+    plt.subplot(1, 2, 1)
+    plt.title(r'$\mathfrak{Re}(\psi_1)$ and $\mathfrak{Re}(\psi_2)$')
+    plt.plot(u, np.abs(psi1(x, v, t, u)), label=r'$|\psi_1|$', color='orange', linestyle='--')
+    plt.plot(u, psi1(x, v, t, u).real, label=r'$\psi_1$', color='orange')
+    plt.plot(u, psi2(x, v, t, u).real, label=r'$\psi_2$', color='blue')
+    plt.grid(visible=True)
+    plt.xlabel(r'$u$')
+    plt.ylabel('Real part')
+    plt.legend()
 
-    # u = np.arange(start=0, stop=40,step=0.01)
+    # Plot imaginary part of psi1 and psi2
+    plt.subplot(1, 2, 2)
+    plt.title(r'$\mathfrak{Im}(\psi_1)$ and $\mathfrak{Im}(\psi_2)$')
+    plt.plot(u, np.abs(psi1(x, v, t, u)), label=r'$|\psi_1|$', color='orange', linestyle='--')
+    plt.plot(u, psi1(x, v, t, u).imag, label=r'$\psi_1$', color='orange')
+    plt.plot(u, psi2(x, v, t, u).imag, label=r'$\psi_2$', color='blue')
+    plt.grid(visible=True)
+    plt.xlabel(r'$u$')
+    plt.ylabel('Imaginary part')
+    plt.legend()
 
-    # plt.figure()
-    # plt.plot(u, integrand1(u) * u**2, label="Integrand 1")
-    # plt.plot(u, integrand2(u) * u**2, label="Integrand 2")
-    # plt.xlabel(r'u')
-    # plt.ylabel(r'Integrand $\times u^2$')
-    # plt.legend()
-    # plt.grid(visible=True)
-    # plt.title(r'Existence of $Q_1$ and $Q_2$')
-    # plt.show()
+    #plt.tight_layout()
+    plt.show() 
+
+
+    # 3D plot
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    ax.plot(u, psi1(x, v, t, u).real, psi1(x, v, t, u).imag, label=r'$\psi_1$', color='orange')
+    ax.plot(u, psi2(x, v, t, u).real, psi2(x, v, t, u).imag, label=r'$\psi_2$', color='blue')
+    ax.set_xticks([-5*i for i in range(6)] + [5*i for i in range(6)])
+    ax.set_yticks([-1, 0, 1])
+    ax.set_zticks([-1, 0, 1])
+    ax.set_xlabel('u')
+    ax.set_ylabel('Real part')
+    ax.set_zlabel('Imaginary part')
+    plt.legend()
+    plt.show()
+
+    ## Integration over R_+
+    psi1 = heston.characteristic(j=1)
+    integrand1 = lambda u : np.real((np.exp(-u * np.log(heston.K) * 1j) * psi1(x, v, t, u))/(u*1j)) 
+    psi2 = heston.characteristic(j=2)
+    integrand2 = lambda u : np.real((np.exp(-u * np.log(heston.K) * 1j) * psi2(x, v, t, u))/(u*1j)) 
+
+    u = np.arange(start=0, stop=40,step=0.01)
+
+    plt.figure()
+    plt.plot(u, integrand1(u) * u**2, label="Integrand 1")
+    plt.plot(u, integrand2(u) * u**2, label="Integrand 2")
+    plt.xlabel(r'u')
+    plt.ylabel(r'Integrand $\times u^2$')
+    plt.legend()
+    plt.grid(visible=True)
+    plt.title(r'Existence of $Q_1$ and $Q_2$')
+    plt.show()
