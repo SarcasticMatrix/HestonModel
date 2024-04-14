@@ -10,9 +10,25 @@ from collections import namedtuple
 
 class HestonModel:
     """
-    Class to represent a Heston Model : can simulate trajectories and price call options with this underlying
+    Class to represent a Heston Model: can simulate trajectories and price call options with this underlying.
     """
+    
     def __init__(self, S0, V0, r, kappa, theta, drift_emm, sigma, rho, T, K):
+        """
+        Initialize the Heston Model with specified parameters.
+
+        Parameters:
+        - S0 (float): spot price
+        - V0 (float): initial variance
+        - r (float): interest rate
+        - kappa (float): mean reversion speed
+        - theta (float): long term variance
+        - drift_emm (float): lambda from P to martingale measure Q (Equivalent Martingale Measure)
+        - sigma (float): vol of variance 
+        - rho (float): correlation
+        - T (float): maturity
+        - K (float): strike
+        """
 
         # Simulation parameters
         self.S0 = S0                # spot price
@@ -21,7 +37,7 @@ class HestonModel:
         # Model parameters
         self.kappa = kappa          # mean reversion speed
         self.theta = theta          # long term variance
-        self.sigma = sigma          # vol of vol (vol of variance)
+        self.sigma = sigma          # vol of variance
         self.rho = rho              # correlation
         self.drift_emm = drift_emm  # lambda from P to martingale measure Q (Equivalent Martingale Measure)
 
@@ -38,15 +54,17 @@ class HestonModel:
         ) -> tuple:
         # generateHestonPathEulerDisc and generateHestonPathMilsteinDisc
         """
-        Simulates and returns several simulated paths following the Heston model
-        Input: 
-            - scheme (str): the discretization scheme used
-            - n (int): number of points in a path
-            - N (int): number of simulated paths
-        Ouput:
-            - S (np.array): stock paths
-            - V (np.array): variance paths
-            - null_variance (int): number of time the simulated variance has been null 
+        Simulates and returns several simulated paths following the Heston model.
+
+        Parameters:
+        - scheme (str): the discretization scheme used
+        - n (int): number of points in a path
+        - N (int): number of simulated paths
+
+        Returns:
+        - S (np.array): stock paths
+        - V (np.array): variance paths
+        - null_variance (int): number of times the simulated variance has been null
         """
         random.seed(42)
 
@@ -94,16 +112,19 @@ class HestonModel:
                             ) -> float:
         # priceHestonCallViaEulerMC and priceHestonCallViaMilsteinMC
         """
-        Simulates sample paths, then estimation the call price with a simple Monte Carlo Method
-        Input: 
-            - n (int): number of points in a path
-            - N (int): number of simulated paths
-        Ouput:
-            - result (namedtuple): with the following attribute
-                - price (float): estimation by Monte Carlo of the call price
-                - standard_deviation (float): standard deviation of the option payoff 
-                - infimum (float): infimum of the confidence interval
-                - supremum (float): supremum of the confidence interval
+        Simulates sample paths and estimates the call price with a simple Monte Carlo Method.
+
+        Parameters:
+        - scheme (str): the discretization scheme used
+        - n (int): number of points in a path
+        - N (int): number of simulated paths
+
+        Returns:
+        - result (namedtuple): with the following attributes:
+            - price (float): estimation by Monte Carlo of the call price
+            - standard_deviation (float): standard deviation of the option payoff
+            - infimum (float): infimum of the confidence interval
+            - supremum (float): supremum of the confidence interval
         """
         random.seed(42)
 
@@ -127,10 +148,13 @@ class HestonModel:
             j: int
         ) -> float:
         """
-        Create the characteristic function Psi_j(x, v, t; u), for a given (x, v, t):
-            - x : ln(S), log of the stock
-            - v : V, the variance 
-            - t : time, tau = T - t
+        Create the characteristic function Psi_j(x, v, t; u), for a given (x, v, t).
+
+        Parameters:
+        - j (int): index of the characteristic function
+
+        Returns:
+        - callable: characteristic function
         """
 
         if j == 1 : 
@@ -157,7 +181,14 @@ class HestonModel:
             t = 0
     ):
         """
-        Computes the price of a European call option on the underlying asset S following a Heston model
+        Computes the price of a European call option on the underlying asset S following a Heston model using the Heston formula.
+
+        Parameters:
+        - t (float): time
+
+        Returns:
+        - price (float): option price
+        - error (float): error in the option price computation
         """
 
         x = np.log(self.S0)
@@ -178,6 +209,13 @@ class HestonModel:
         return price, error
 
     def carr_madan_price(self):
+        """
+        Computes the price of a European call option on the underlying asset S following a Heston model using Carr-Madan Fourier pricing.
+
+        Returns:
+        - price (float): option price
+        - error (float): error in the option price computation
+        """
         
         x = np.log(self.S0)
         v = self.V0
@@ -196,6 +234,14 @@ class HestonModel:
         return price, error 
 
     def plot_simulation(self, scheme : str = 'euler', n: int = 1000):
+        """
+        Plots the simulation of a Heston model trajectory.
+
+        Parameters:
+        - scheme (str): the discretization scheme used (euler or milstein)
+        - n (int): number of points in a path
+        """
+         
         S, V, _ = self.simulate(n=n, scheme=scheme)
 
         fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True)
