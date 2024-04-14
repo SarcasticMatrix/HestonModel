@@ -22,6 +22,6 @@ This project enables the implementation of a Heston Model and the pricing of van
     pip install -r requirements.txt
     ```
 
-4. Run the code !
+4. Run `HestonModel.py` file!
 
 
