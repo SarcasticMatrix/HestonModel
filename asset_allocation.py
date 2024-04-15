@@ -1,5 +1,6 @@
 from scripts.HestonModel import HestonModel
-from scripts.PortfolioStrategy import PortfolioStrategy
+from scripts.Portfolio import Portfolio
+from scripts.strategies import time_varying_strategy, naive_strategy, optimal_allocate_strategy
 
 import matplotlib.pyplot as plt 
 import numpy as np
@@ -20,48 +21,58 @@ K = 100
 
 premium_volatility_risk = 0.05
 
-heston = HestonModel(S0, V0, r, kappa, theta, drift_emm, sigma, rho, T, K, premium_volatility_risk)
+heston = HestonModel(S0, V0, r, kappa, theta, drift_emm, sigma, rho, T, K, premium_volatility_risk, 1)
 
 S, V, _ = heston.simulate(scheme='milstein', n=1000, N=1)
 S = S.flatten()
 V = V.flatten()
 
-time = np.linspace(start=0, stop=1, num=len(S))
+time = np.linspace(start=0, stop=T, num=len(S))
 dt = time[1] - time[0]
+
+portfolio = Portfolio(r=r, dt=dt)
 
 ### Naive constant allocation strategy
 
-strategy = PortfolioStrategy(r=r, dt=dt)
-allocate_portfolio = lambda s: (0.5,0.5)
-bank_account, stocks_account = strategy.constant_back_test(S=S, portfolio0=S0, allocate_portfolio=allocate_portfolio)
+allocation1 = naive_strategy(0.5, len(S))
+bank_account, stocks_account = portfolio.back_test(S=S, portfolio0=S0, allocation_strategy=allocation1)
 portfolio_value1 = bank_account + stocks_account
 
-strategy = PortfolioStrategy(r=r, dt=dt)
-allocate_portfolio = lambda s: (0.7,0.3)
-bank_account, stocks_account = strategy.constant_back_test(S=S, portfolio0=S0, allocate_portfolio=allocate_portfolio)
+allocation2 = naive_strategy(0.7, len(S))
+bank_account, stocks_account = portfolio.back_test(S=S, portfolio0=S0, allocation_strategy=allocation2)
 portfolio_value2 = bank_account + stocks_account
 
-
-### Constant allocation strategy knowing return and volatility
-
-strategy = PortfolioStrategy(r=r, dt=dt)
-bank_account, stocks_account = strategy.optimal_back_test(S=S, portfolio0=S0, premium_volatility_risk=0.05, V=V, p=0.05)
+allocation3 = naive_strategy(1, len(S))
+bank_account, stocks_account = portfolio.back_test(S=S, portfolio0=S0, allocation_strategy=allocation3)
 portfolio_value3 = bank_account + stocks_account
 
+### Time varying allocation strategy
 
-strategy = PortfolioStrategy(r=r, dt=dt)
-bank_account, stocks_account = strategy.optimal_back_test(S=S, portfolio0=S0, premium_volatility_risk=0.5, V=V, p=0.05)
+percentage_in_bank_account = 1
+p = 0.05
+allocation4 = time_varying_strategy(premium_volatility_risk=premium_volatility_risk, p=p, heston=heston, V=V)
+bank_account, stocks_account = portfolio.back_test(S=S, portfolio0=S0, allocation_strategy=allocation4)
 portfolio_value4 = bank_account + stocks_account
 
+
+### Optimal allocation strategy
+
+p = 0.9
+optimal_allocation = optimal_allocate_strategy(heston=heston, p=p, time=time)
+bank_account, stocks_account = portfolio.back_test(S=S, portfolio0=S0, allocation_strategy=optimal_allocation)
+portfolio_value_optimal = bank_account + stocks_account
 
 ### Plot strategies
 
 fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8), sharex=True)  
 
-#ax1.plot(time, portfolio_value1, label='NS 50% bank account', color='blue', linewidth=1)
-#ax1.plot(time, portfolio_value2, label='NS 70% bank account', color='green', linewidth=1)
-ax1.plot(time, portfolio_value3, label=r'Time varying strategy $\bar\lambda=0.05$', color='red', linewidth=1)
-ax1.plot(time, portfolio_value4, label=r'Time varying strategy $\bar\lambda=0.5$', color='orange', linewidth=1)
+ax1.plot(time, portfolio_value1, label='NS 50% bank account', color='blue', linewidth=1)
+ax1.plot(time, portfolio_value2, label='NS 70% bank account', color='green', linewidth=1)
+ax1.plot(time, portfolio_value3, label='NS 100% bank account', color='red', linewidth=1)
+#ax1.plot(time, portfolio_value4, label=r'TVS $\bar\lambda=0.5$', color='orange', linewidth=1)
+
+ax1.plot(time, portfolio_value_optimal, label=r'Optimal strategy', color='purple', linewidth=1)
+
 ax1.plot(time, S, label='Stock', color='black', linewidth=1)
 ax1.set_ylabel('Value [currency unit]')
 ax1.set_title('Portfolio Value over Time')
@@ -69,19 +80,43 @@ ax1.legend()
 ax1.grid(visible=True)
 
 # P&L
-PnL1 = np.diff(portfolio_value1)
-PnL2 = np.diff(portfolio_value2)
-PnL3 = np.diff(portfolio_value3)
-PnL4 = np.diff(portfolio_value4)
-#ax2.plot(time[1:], PnL1, label=r'$\pi_1$', color='blue', linewidth=0.7)
-#ax2.plot(time[1:], PnL2, label=r'$\pi_2$', color='green', linewidth=0.7)
-ax2.plot(time[1:], PnL3, label=r'$\pi_3$', color='red', linewidth=0.7)
-ax2.plot(time[1:], PnL4, label=r'$\pi_4$', color='orange', linewidth=0.7)
+# PnL1 = np.diff(portfolio_value1)
+# PnL2 = np.diff(portfolio_value2)
+# PnL3 = np.diff(portfolio_value3)
+#PnL4 = np.diff(portfolio_value4)
+
+ax2.plot(time, allocation1, label=r'$\pi_1$', color='blue', linewidth=0.7)
+ax2.plot(time, allocation2, label=r'$\pi_2$', color='green', linewidth=0.7)
+ax2.plot(time, allocation3, label=r'$\pi_3$', color='red', linewidth=0.7)
+ax2.plot(time, allocation4, label=r'$\pi_4$', color='orange', linewidth=0.7)
+
+ax2.plot(time, optimal_allocation, label=r'$\pi^\star$', color='purple', linewidth=0.7)
+
+
 ax2.set_xlabel('Time')
-ax2.set_ylabel('Profit & Loss [currency unit]')
-ax2.set_title('Profit & Loss over Time')
+ax2.set_ylabel(r'Units')
+ax2.set_title('Number of units of stock held')
 ax2.legend()
 ax2.grid(visible=True)
 
+plt.suptitle('Naive Strategy (NS) and Time Varying Strategy (TVS)')
 plt.tight_layout()  
 plt.show()
+
+
+## Surface plot
+p = np.arange(start=0, stop=1, step=0.01)
+p, tau = np.meshgrid(p, heston.T - time)
+
+Z = optimal_allocate_strategy(heston=heston, p=p, time=tau)
+
+fig = plt.figure()
+ax = fig.add_subplot(111, projection='3d')
+ax.plot_surface(tau, p, Z)
+
+ax.set_xlabel('p')
+ax.set_ylabel(r'$\tau$')
+ax.set_zlabel(r'$\%$ of portfolio in stock')
+
+plt.show()
+
