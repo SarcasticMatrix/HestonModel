@@ -1,19 +1,21 @@
 import numpy as np
 from numpy import random
-import time
 random.seed(42)
-
-from scipy.integrate import quad # compute integral
-
+import time
+from scipy.integrate import quad 
 import matplotlib.pyplot as plt 
 from collections import namedtuple
+
+import warnings
+warnings.filterwarnings("ignore")
+
 
 class HestonModel:
     """
     Class to represent a Heston Model: can simulate trajectories and price call options with this underlying.
     """
     
-    def __init__(self, S0, V0, r, kappa, theta, drift_emm, sigma, rho, T, K):
+    def __init__(self, S0, V0, r, kappa, theta, drift_emm, sigma, rho, T, K, bar = 0.0):
         """
         Initialize the Heston Model with specified parameters.
 
@@ -28,6 +30,7 @@ class HestonModel:
         - rho (float): correlation
         - T (float): maturity
         - K (float): strike
+        - bar (float): premium for volatility risk by default is 0.0
         """
 
         # Simulation parameters
@@ -40,6 +43,7 @@ class HestonModel:
         self.sigma = sigma          # vol of variance
         self.rho = rho              # correlation
         self.drift_emm = drift_emm  # lambda from P to martingale measure Q (Equivalent Martingale Measure)
+        self.bar = bar
 
         # Option parameters
         self.T = T                  # maturity
@@ -50,7 +54,7 @@ class HestonModel:
     def simulate(self, 
                 scheme : str = "euler", 
                 n: int = 100, 
-                N:int = 1000
+                N:int = 1000,
         ) -> tuple:
         # generateHestonPathEulerDisc and generateHestonPathMilsteinDisc
         """
@@ -92,7 +96,9 @@ class HestonModel:
             ZS = (self.rho * N1 + np.sqrt(1-self.rho**2) * N2) * np.sqrt(dt) 
 
             # Update the processes 
-            S[:, i] = S[:, i-1] + self.r * S[:, i-1] * dt + np.sqrt(V[:, i-1]) * S[:, i-1] * ZS
+            #S[:, i] = S[:, i-1] + self.r * S[:, i-1] * dt + np.sqrt(V[:, i-1]) * S[:, i-1] * ZS
+            S[:, i] = S[:, i-1] + (self.r + self.bar * np.sqrt(V[:, i-1]))* S[:, i-1] * dt + np.sqrt(V[:, i-1]) * S[:, i-1] * ZS 
+
             V[:, i] = V[:, i-1] + (self.kappa * (self.theta - V[:, i-1]) - self.drift_emm * V[:, i-1]) * dt + self.sigma * np.sqrt(V[:, i-1]) * ZV 
             if scheme == "milstein":
                 S[:, i] += 1/2 * V[:, i-1] * S[:, i-1] * (ZS**2 - dt) 
@@ -174,7 +180,7 @@ class HestonModel:
         Cj = lambda tau, u : self.r * u * tau * 1j + a/self.sigma**2 * ((bj - self.rho * self.sigma * u * 1j + dj(u)) * tau - 2 * np.log((1-gj(u)*np.exp(dj(u)*tau))/(1-gj(u))))  
         Dj = lambda tau, u : (bj - self.rho * self.sigma * u * 1j + dj(u))/self.sigma**2 * (1-np.exp(dj(u) * tau))/(1-gj(u) * np.exp(dj(u)*tau))
 
-        return lambda x, v, t, u : np.exp(Cj(T-t,u) + Dj(T-t,u)*v + u * x * 1j)
+        return lambda x, v, t, u : np.exp(Cj(self.T-t,u) + Dj(self.T-t,u)*v + u * x * 1j)
     
     def fourier_transform_price(
             self,
@@ -241,7 +247,8 @@ class HestonModel:
         - scheme (str): the discretization scheme used (euler or milstein)
         - n (int): number of points in a path
         """
-         
+        random.seed(42)
+        
         S, V, _ = self.simulate(n=n, scheme=scheme)
 
         fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True)
