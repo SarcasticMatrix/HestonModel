@@ -22,6 +22,6 @@ This project enables the implementation of a Heston Model and the pricing of van
     pip install -r requirements.txt
     ```
 
-4. Run the `pricing.py.py` file!
+4. Run the `pricing.py.py` file for pricing vanilla Call options under the Heston model ; or `asset_allocation.py` for Asset allocation under the Heston model.
 
 
