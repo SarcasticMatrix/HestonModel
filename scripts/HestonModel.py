@@ -15,7 +15,7 @@ class HestonModel:
     Class to represent a Heston Model: can simulate trajectories and price call options with this underlying.
     """
     
-    def __init__(self, S0, V0, r, kappa, theta, drift_emm, sigma, rho, T, K, bar = 0.0):
+    def __init__(self, S0, V0, r, kappa, theta, drift_emm, sigma, rho, T, K, premium_volatility_risk = 0.0, seed=42):
         """
         Initialize the Heston Model with specified parameters.
 
@@ -30,7 +30,8 @@ class HestonModel:
         - rho (float): correlation
         - T (float): maturity
         - K (float): strike
-        - bar (float): premium for volatility risk by default is 0.0
+        - premium_volatility_risk (float): premium for volatility risk by default is 0.0
+        - seed (int): random seed, by default set at 42
         """
 
         # Simulation parameters
@@ -43,13 +44,14 @@ class HestonModel:
         self.sigma = sigma          # vol of variance
         self.rho = rho              # correlation
         self.drift_emm = drift_emm  # lambda from P to martingale measure Q (Equivalent Martingale Measure)
-        self.bar = bar
+        self.premium_volatility_risk = premium_volatility_risk
 
         # Option parameters
         self.T = T                  # maturity
         self.K = K                  # strike
         self.r = r                  # interest rate
         
+        self.seed = seed            # random seed
 
     def simulate(self, 
                 scheme : str = "euler", 
@@ -70,7 +72,7 @@ class HestonModel:
         - V (np.array): variance paths
         - null_variance (int): number of times the simulated variance has been null
         """
-        random.seed(42)
+        random.seed(self.seed)
 
         dt = self.T / n
         S = np.zeros((N, n + 1))
@@ -97,7 +99,7 @@ class HestonModel:
 
             # Update the processes 
             #S[:, i] = S[:, i-1] + self.r * S[:, i-1] * dt + np.sqrt(V[:, i-1]) * S[:, i-1] * ZS
-            S[:, i] = S[:, i-1] + (self.r + self.bar * np.sqrt(V[:, i-1]))* S[:, i-1] * dt + np.sqrt(V[:, i-1]) * S[:, i-1] * ZS 
+            S[:, i] = S[:, i-1] + (self.r + self.premium_volatility_risk * np.sqrt(V[:, i-1]))* S[:, i-1] * dt + np.sqrt(V[:, i-1]) * S[:, i-1] * ZS 
 
             V[:, i] = V[:, i-1] + (self.kappa * (self.theta - V[:, i-1]) - self.drift_emm * V[:, i-1]) * dt + self.sigma * np.sqrt(V[:, i-1]) * ZV 
             if scheme == "milstein":
@@ -132,7 +134,7 @@ class HestonModel:
             - infimum (float): infimum of the confidence interval
             - supremum (float): supremum of the confidence interval
         """
-        random.seed(42)
+        random.seed(self.seed)
 
         S, _, null_variance = self.simulate(scheme, n, N)
         print(f"Variance has been null {null_variance} times over the {n*N} iterations ({round(null_variance/(n*N)*100,2)}%) ")
@@ -247,7 +249,7 @@ class HestonModel:
         - scheme (str): the discretization scheme used (euler or milstein)
         - n (int): number of points in a path
         """
-        random.seed(42)
+        random.seed(self.seed)
         
         S, V, _ = self.simulate(n=n, scheme=scheme)
 
