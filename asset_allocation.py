@@ -33,33 +33,50 @@ dt = time[1] - time[0]
 
 strategy = PortfolioStrategy(r=r, dt=dt)
 allocate_portfolio = lambda s: (0.5,0.5)
-bank_account, stocks_account = strategy.back_test(S=S, portfolio0=S0, allocate_portfolio=allocate_portfolio)
+bank_account, stocks_account = strategy.constant_back_test(S=S, portfolio0=S0, allocate_portfolio=allocate_portfolio)
 portfolio_value1 = bank_account + stocks_account
+
+strategy = PortfolioStrategy(r=r, dt=dt)
+allocate_portfolio = lambda s: (0.7,0.3)
+bank_account, stocks_account = strategy.constant_back_test(S=S, portfolio0=S0, allocate_portfolio=allocate_portfolio)
+portfolio_value2 = bank_account + stocks_account
 
 
 ### Constant allocation strategy knowing return and volatility
 
-alpha = lambda v: r + np.sqrt(v)
-returns = lambda v: r + premium_volatility_risk * np.sqrt(v)
-pi = lambda v, p: (alpha(v)-returns(v))/((1-p) * v) 
+strategy = PortfolioStrategy(r=r, dt=dt)
+bank_account, stocks_account = strategy.optimal_back_test(S=S, portfolio0=S0, premium_volatility_risk=0.05, V=V, p=0.05)
+portfolio_value3 = bank_account + stocks_account
 
-portfolio_value2 = pi(V, 0.5) * S 
+
+strategy = PortfolioStrategy(r=r, dt=dt)
+bank_account, stocks_account = strategy.optimal_back_test(S=S, portfolio0=S0, premium_volatility_risk=0.5, V=V, p=0.05)
+portfolio_value4 = bank_account + stocks_account
 
 
 ### Plot strategies
 
 fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8), sharex=True)  
 
-ax1.plot(time, portfolio_value1, label='Naive constant strategy', color='blue', linewidth=1)
+#ax1.plot(time, portfolio_value1, label='NS 50% bank account', color='blue', linewidth=1)
+#ax1.plot(time, portfolio_value2, label='NS 70% bank account', color='green', linewidth=1)
+ax1.plot(time, portfolio_value3, label=r'Time varying strategy $\bar\lambda=0.05$', color='red', linewidth=1)
+ax1.plot(time, portfolio_value4, label=r'Time varying strategy $\bar\lambda=0.5$', color='orange', linewidth=1)
+ax1.plot(time, S, label='Stock', color='black', linewidth=1)
 ax1.set_ylabel('Value [currency unit]')
 ax1.set_title('Portfolio Value over Time')
 ax1.legend()
 ax1.grid(visible=True)
 
 # P&L
-#PnL = [portfolio_value1[i] - portfolio_value1[i-1] for i in range(1, len(portfolio_value1))]
-PnL = portfolio_value1 - S0
-ax2.plot(time, PnL, label='Profit & Loss', color='green', linewidth=1)
+PnL1 = np.diff(portfolio_value1)
+PnL2 = np.diff(portfolio_value2)
+PnL3 = np.diff(portfolio_value3)
+PnL4 = np.diff(portfolio_value4)
+#ax2.plot(time[1:], PnL1, label=r'$\pi_1$', color='blue', linewidth=0.7)
+#ax2.plot(time[1:], PnL2, label=r'$\pi_2$', color='green', linewidth=0.7)
+ax2.plot(time[1:], PnL3, label=r'$\pi_3$', color='red', linewidth=0.7)
+ax2.plot(time[1:], PnL4, label=r'$\pi_4$', color='orange', linewidth=0.7)
 ax2.set_xlabel('Time')
 ax2.set_ylabel('Profit & Loss [currency unit]')
 ax2.set_title('Profit & Loss over Time')

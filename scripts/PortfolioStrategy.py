@@ -24,7 +24,7 @@ class PortfolioStrategy:
         Method to grow the bank with interest.
 
         Args:
-            bank_account (float): Current bank bank.
+            bank_account (float): Current bank balance.
 
         Returns:
             float: The updated bank balance.
@@ -33,29 +33,31 @@ class PortfolioStrategy:
     
     def grow_stocks_account(self, stocks_account, S_now, S_previous):
         """
-        Method to grow the cash with interest.
+        Method to grow the stocks account with interest.
 
         Args:
-            stocks_account (float): Current stock cash.
+            stocks_account (float): Current stocks account balance.
+            S_now (float): Current stock price.
+            S_previous (float): Previous stock price.
 
         Returns:
-            float: The updated cash balance.
+            float: The updated stocks account balance.
         """
         number_of_stocks = stocks_account / S_previous
         return number_of_stocks * S_now
 
-    def back_test(self, S, portfolio0, allocate_portfolio):
+    def constant_back_test(self, S, portfolio0, allocate_portfolio):
         """
-        Method to back test the portfolio strategy.
+        Method to back test the portfolio strategy for a constant strategy.
 
         Args:
             S (array_like): Array of stock prices over time.
-            portfolio0 (float): initial value of portfolio.
-            allocate_portfolio (function): allocation strategy
+            portfolio0 (float): Initial value of portfolio.
+            allocate_portfolio (function): Allocation strategy function.
 
         Returns:
-            bank_account (array_like), money in the bank account over time
-            stocks_account (array_like), money in stocks over time
+            bank_account (array_like): Money in the bank account over time.
+            stocks_account (array_like): Money in stocks over time.
         """
 
         bank_account = np.empty_like(S)
@@ -78,3 +80,60 @@ class PortfolioStrategy:
         
         return bank_account, stocks_account
 
+    def allocate_portfolio(self, premium_volatility_risk, p):
+        """
+        Function to determine the allocation of the portfolio based on premium volatility risk and p.
+
+        Args:
+            premium_volatility_risk (float): Premium volatility risk parameter.
+            p (float): Parameter.
+
+        Returns:
+            function: Allocation function.
+        """
+        alpha = lambda v: self.r + np.sqrt(v)
+        returns = lambda v: self.r + premium_volatility_risk * np.sqrt(v)
+        pi = lambda v: (alpha(v)-returns(v))/((1-p) * v) 
+        return pi
+
+    def optimal_back_test(self, S, portfolio0, premium_volatility_risk, V, p):
+        """
+        Method to back test the portfolio strategy for a time-varying strategy.
+
+        Args:
+            S (array_like): Array of stock prices over time.
+            portfolio0 (float): Initial value of portfolio.
+            premium_volatility_risk (float): Premium volatility risk parameter.
+            V (array_like): Array of values.
+            p (float): Parameter.
+
+        Returns:
+            bank_account (array_like): Money in the bank account over time.
+            stocks_account (array_like): Money in stocks over time.
+        """
+
+        allocate_portfolio = self.allocate_portfolio(premium_volatility_risk, p)
+
+        stock_allocation = allocate_portfolio(V[0])
+        bank_allocation = 1 - stock_allocation
+
+        bank_account = np.empty_like(S)
+        stocks_account = np.empty_like(S)
+
+        stocks_account[0] = portfolio0 * stock_allocation
+        bank_account[0] = portfolio0 * bank_allocation
+
+        for t in range(1, len(S)):
+
+            # Update the portfolio
+            bank_account[t] = self.grow_bank_account(bank_account[t-1])
+            stocks_account[t] = self.grow_stocks_account(stocks_account=stocks_account[t-1], S_now=S[t], S_previous=S[t-1])
+
+            # Update the allocation
+            stock_allocation = allocate_portfolio(V[t])
+            bank_allocation = 1 - stock_allocation
+            total_value = bank_account[t] + stocks_account[t]
+            bank_account[t] = total_value * bank_allocation
+            stocks_account[t] = total_value * stock_allocation
+        
+        return bank_account, stocks_account
