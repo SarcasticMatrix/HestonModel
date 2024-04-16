@@ -4,7 +4,7 @@ This project enables the implementation of a Heston Model and the pricing of van
 
 ## Installation
 
-1. Clone the GitHub repository:
+1. Clone the GitHub repository or download the repo:
 
     ```bash
     git clone https://github.com/SarcasticMatrix/HestonModel.git
