@@ -1,6 +1,6 @@
 from scripts.HestonModel import HestonModel
 from scripts.Portfolio import Portfolio
-from scripts.strategies import time_varying_strategy, naive_strategy, optimal_allocate_strategy
+from scripts.strategies import time_varying_strategy, naive_strategy, optimal_allocate_strategy, run_strategies
 
 import matplotlib.pyplot as plt 
 import numpy as np
@@ -20,8 +20,9 @@ T = 1
 K = 100
 
 premium_volatility_risk = 0.05
+seed = 380
 
-heston = HestonModel(S0, V0, r, kappa, theta, drift_emm, sigma, rho, T, K, premium_volatility_risk, 1)
+heston = HestonModel(S0, V0, r, kappa, theta, drift_emm, sigma, rho, T, K, premium_volatility_risk, seed)
 
 S, V, _ = heston.simulate(scheme='milstein', n=1000, N=1)
 S = S.flatten()
@@ -57,10 +58,15 @@ portfolio_value4 = bank_account + stocks_account
 
 ### Optimal allocation strategy
 
-p = 0.9
+p = 0.02
 optimal_allocation = optimal_allocate_strategy(heston=heston, p=p, time=time)
 bank_account, stocks_account = portfolio.back_test(S=S, portfolio0=S0, allocation_strategy=optimal_allocation)
 portfolio_value_optimal = bank_account + stocks_account
+
+### Run strategies
+seeds = np.arange(1,1000,1)
+run_strategies(seeds, portfolio0=S0)
+
 
 ### Plot strategies
 
@@ -80,22 +86,23 @@ ax1.legend()
 ax1.grid(visible=True)
 
 # P&L
-# PnL1 = np.diff(portfolio_value1)
-# PnL2 = np.diff(portfolio_value2)
-# PnL3 = np.diff(portfolio_value3)
+PnL1 = np.diff(portfolio_value1)
+PnL2 = np.diff(portfolio_value2)
+PnL3 = np.diff(portfolio_value3)
 #PnL4 = np.diff(portfolio_value4)
 
-ax2.plot(time, allocation1, label=r'$\pi_1$', color='blue', linewidth=0.7)
-ax2.plot(time, allocation2, label=r'$\pi_2$', color='green', linewidth=0.7)
-ax2.plot(time, allocation3, label=r'$\pi_3$', color='red', linewidth=0.7)
-ax2.plot(time, allocation4, label=r'$\pi_4$', color='orange', linewidth=0.7)
+ax2.plot(time[1:], PnL1, label=r'$\pi_1$', color='blue', linewidth=0.7)
+ax2.plot(time[1:], PnL2, label=r'$\pi_2$', color='green', linewidth=0.7)
+ax2.plot(time[1:], PnL3, label=r'$\pi_3$', color='red', linewidth=0.7)
+#ax2.plot(time, PnL4, label=r'$\pi_4$', color='orange', linewidth=0.7)
 
-ax2.plot(time, optimal_allocation, label=r'$\pi^\star$', color='purple', linewidth=0.7)
+PnL_opt = np.diff(portfolio_value_optimal)
+ax2.plot(time[1:], PnL_opt, label=r'$\pi^\star$', color='purple', linewidth=0.7)
 
 
 ax2.set_xlabel('Time')
-ax2.set_ylabel(r'Units')
-ax2.set_title('Number of units of stock held')
+ax2.set_ylabel(r'\textbf{PnL(t)}')
+ax2.set_title(r'\textbf{PnL}')
 ax2.legend()
 ax2.grid(visible=True)
 
@@ -106,6 +113,8 @@ plt.show()
 
 ## Surface plot
 p = np.arange(start=0, stop=1, step=0.01)
+p = p[1:-1]
+time = np.arange(start=0, stop=1, step=0.01)
 p, tau = np.meshgrid(p, heston.T - time)
 
 Z = optimal_allocate_strategy(heston=heston, p=p, time=tau)
@@ -119,4 +128,3 @@ ax.set_ylabel(r'$\tau$')
 ax.set_zlabel(r'$\%$ of portfolio in stock')
 
 plt.show()
-
