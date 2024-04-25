@@ -1,10 +1,18 @@
 import numpy as np
 from numpy import random
+from random import gauss
+from scipy.stats import norm
 random.seed(42)
-import time
 from scipy.integrate import quad 
-import matplotlib.pyplot as plt 
+
+import time
+import matplotlib.pyplot as plt
 from collections import namedtuple
+
+import particles  # core module
+from particles import distributions as dists  # where probability distributions are defined
+from particles import state_space_models as ssm  # where state-space models are defined
+from particles.collectors import Moments
 
 import warnings
 warnings.filterwarnings("ignore")
@@ -110,6 +118,10 @@ class HestonModel:
                 pass
             else: 
                 print("Choose a scheme between: 'euler' or 'milstein'")
+
+        if N == 1:
+            S = S.flatten()
+            V = V.flatten()
 
         return S, V, null_variance
 
@@ -257,15 +269,55 @@ class HestonModel:
 
         ax1.plot(np.linspace(0,1,n+1), S[0, :], label='Risky asset', color='blue', linewidth=1)
         ax1.set_ylabel('Value [$]', fontsize=12)
+        ax1.legend()
 
         #ax2.plot(np.linspace(0,1,n+1), np.sqrt(V[0, :]), label='Volatility', color='orange', linestyle='dotted', linewidth=1)
         ax2.plot(np.linspace(0,1,n+1), V[0, :], label='Variance', color='orange', linewidth=1)
         ax2.set_xlabel('Time [h]', fontsize=12)
         ax2.set_ylabel('Variance', fontsize=12)
+        ax2.legend()
 
         fig.suptitle(f'Heston Model Simulation with {scheme} scheme', fontsize=16)
         plt.tight_layout()
         plt.show()
+
+    def SIR_estimation(
+            self,
+            log_returns: np.ndarray,
+            useHeston: bool = True,
+            N: int = 1000,
+        ):
+        """
+            useHeston = use parameters of the heston et don't estimate with MCMC
+        """
+            
+        class StochVol(ssm.StateSpaceModel):
+
+            def PX0(self):  # Distribution of X_0
+                return dists.Normal(loc=self.theta, scale=self.sigma) # scale = self.sigma / np.sqrt(1. - (self.kappa + self.drift)**2)
+            
+            def PX(self, t, xp):  # Distribution of X_t given X_{t-1}=xp (p=past)
+                return dists.Normal(loc = self.kappa * (self.theta - xp) - self.drift * xp, scale=self.sigma)
+            
+            def PY(self, t, xp, x):  # Distribution of Y_t given X_t=x (and possibly X_{t-1}=xp)
+                return dists.Normal(loc = self.log_return, scale = np.exp(x))
+        
+        if useHeston:
+            my_model = StochVol(theta=self.theta, sigma=self.sigma, kappa=self.kappa, drift=self.drift_emm, log_return=self.r) 
+            fk_model = ssm.Bootstrap(ssm=my_model, data=log_returns)  
+            pf = particles.SMC(
+                fk=fk_model, 
+                N=N, 
+                qmc=False, 
+                resampling='systematic', 
+                store_history=False, 
+                verbose=False, 
+                collect=[Moments()]
+            )
+            pf.run()
+        estimation = np.array([m['mean'] for m in pf.summaries.moments])
+        return estimation
+            
 
 if __name__ == "__main__":
 
