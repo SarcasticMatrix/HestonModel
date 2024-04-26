@@ -74,7 +74,7 @@ ax1.legend()
 ax1.set_ylabel('Value [$]', fontsize=12)
 
 ax2.plot(time, V, label=r'$v_t$', color='orange', linewidth=1)
-ax2.plot(time[1:], np.sqrt(np.exp(estimation)), label='Estimation', color='violet', linewidth=1)
+ax2.plot(time[1:], estimation, label='Estimation', color='violet', linewidth=1)
 ax2.legend()
 ax2.set_xlabel('Time [h]', fontsize=12)
 ax2.set_ylabel('Variance', fontsize=12)

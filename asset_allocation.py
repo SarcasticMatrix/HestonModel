@@ -64,6 +64,7 @@ bank_account, stocks_account = portfolio.back_test(S=S, portfolio0=S0, allocatio
 portfolio_value_optimal = bank_account + stocks_account
 
 ### Run strategies
+
 seeds = np.arange(1,1000,1)
 run_strategies(seeds, portfolio0=S0)
 

@@ -263,19 +263,21 @@ class HestonModel:
         """
         random.seed(self.seed)
         
-        S, V, _ = self.simulate(n=n, scheme=scheme)
+        S, V, _ = self.simulate(n=n, scheme=scheme, N=1)
 
         fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True)
 
-        ax1.plot(np.linspace(0,1,n+1), S[0, :], label='Risky asset', color='blue', linewidth=1)
+        ax1.plot(np.linspace(0, 1, n+1), S, label='Risky asset', color='blue', linewidth=1)
+        ax1.axhline(y=self.K, label=r'$K$', linestyle='--', color='black')
         ax1.set_ylabel('Value [$]', fontsize=12)
         ax1.legend()
+        ax1.grid(axis='x')
 
-        #ax2.plot(np.linspace(0,1,n+1), np.sqrt(V[0, :]), label='Volatility', color='orange', linestyle='dotted', linewidth=1)
-        ax2.plot(np.linspace(0,1,n+1), V[0, :], label='Variance', color='orange', linewidth=1)
+        ax2.plot(np.linspace(0,1,n+1), np.sqrt(V), label='Variance', color='orange', linewidth=1)
         ax2.set_xlabel('Time [h]', fontsize=12)
-        ax2.set_ylabel('Variance', fontsize=12)
+        ax2.set_ylabel('Instantaneous volatility [%]', fontsize=12)
         ax2.legend()
+        ax2.grid(axis='x')
 
         fig.suptitle(f'Heston Model Simulation with {scheme} scheme', fontsize=16)
         plt.tight_layout()
