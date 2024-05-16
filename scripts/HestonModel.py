@@ -17,7 +17,6 @@ from particles.collectors import Moments
 import warnings
 warnings.filterwarnings("ignore")
 
-
 class HestonModel:
     """
     Class to represent a Heston Model: can simulate trajectories and price call options with this underlying.
@@ -270,18 +269,25 @@ class HestonModel:
         ax1.plot(np.linspace(0, 1, n+1), S, label='Risky asset', color='blue', linewidth=1)
         ax1.axhline(y=self.K, label=r'$K$', linestyle='--', color='black')
         ax1.set_ylabel('Value [$]', fontsize=12)
-        ax1.legend()
-        ax1.grid(axis='x')
+        ax1.legend(loc='upper left')
+        ax1.grid(visible=True,which="major",linestyle="--",dashes=(5, 10),color="gray",linewidth=0.5,alpha=0.8)
+        ax1.minorticks_on()
+        ax1.grid(which="minor", visible=False)
 
-        ax2.plot(np.linspace(0,1,n+1), np.sqrt(V), label='Variance', color='orange', linewidth=1)
-        ax2.set_xlabel('Time [h]', fontsize=12)
+        ax2.plot(np.linspace(0,1,n+1), np.sqrt(V), label='Volatility', color='orange', linewidth=1)
+        ax2.axhline(y=np.sqrt(self.theta), label=r'$\sqrt{\theta}$', linestyle='--', color='black')
+        ax2.set_xlabel('Time', fontsize=12)
         ax2.set_ylabel('Instantaneous volatility [%]', fontsize=12)
-        ax2.legend()
-        ax2.grid(axis='x')
+        ax2.legend(loc='upper left')
+        ax2.grid(visible=True,which="major",linestyle="--",dashes=(5, 10),color="gray",linewidth=0.5,alpha=0.8)
+        ax2.minorticks_on()
+        ax2.grid(which="minor", visible=False)       
 
         fig.suptitle(f'Heston Model Simulation with {scheme} scheme', fontsize=16)
         plt.tight_layout()
         plt.show()
+    
+        return S, V 
 
     def SIR_estimation(
             self,
