@@ -239,7 +239,6 @@ class HestonModel:
         x = np.log(self.S0)
         v = self.V0
         t = self.T - 1
-        #alpha = 1/2 * (self.kappa**2 / (self.sigma * (2 * self.kappa - self.sigma)) + self.kappa**2 / (self.sigma * (- 2 * self.kappa - self.sigma)))
         alpha = 0.3
 
         price_hat = lambda u: np.exp(- self.r * self.T) / (alpha**2 + alpha - u**2 + u * (2 * alpha + 1) * 1j) \
@@ -250,7 +249,7 @@ class HestonModel:
         price = np.exp(- alpha * np.log(self.K)) / np.pi * quad(func = integrand, a = 0, b = 50)[0]
         error = np.exp(- alpha * np.log(self.K)) / np.pi * quad(func = integrand, a = 0, b = 50)[1]
 
-        return price, error 
+        return price, error
 
     def plot_simulation(self, scheme : str = 'euler', n: int = 1000):
         """
@@ -289,185 +288,139 @@ class HestonModel:
     
         return S, V 
 
-    def SIR_estimation(
-            self,
-            log_returns: np.ndarray,
-            useHeston: bool = True,
-            N: int = 1000,
-        ):
-        """
-            useHeston = use parameters of the heston et don't estimate with MCMC
-        """
-            
-        class StochVol(ssm.StateSpaceModel):
 
-            def PX0(self):  # Distribution of X_0
-                return dists.Normal(loc=self.theta, scale=self.sigma) # scale = self.sigma / np.sqrt(1. - (self.kappa + self.drift)**2)
-            
-            def PX(self, t, xp):  # Distribution of X_t given X_{t-1}=xp (p=past)
-                return dists.Normal(loc = self.kappa * (self.theta - xp) - self.drift * xp, scale=self.sigma)
-            
-            def PY(self, t, xp, x):  # Distribution of Y_t given X_t=x (and possibly X_{t-1}=xp)
-                return dists.Normal(loc = self.log_return, scale = np.exp(x))
+
+
+import yfinance as yf
+from datetime import datetime
+from scipy.optimize import minimize
+def calibrate(
+    heston: HestonModel,
+    option_type: str, 
+    symbol: str = 'MSFT', 
+    expiration_dates: list = None
+):
+    """
+    Calibrer le modèle de Heston sur plusieurs dates d'expiration et strike associé.
+    
+    - expiration_dates : list of str
+        Liste des dates d'expiration au format 'YYYY-MM-DD'.
+    """
+
+    if expiration_dates is None:
+        expiration_dates = [
+            '2024-05-24', '2024-05-31', 
+            '2024-06-07', '2024-06-14', '2024-06-21', '2024-06-28', 
+            # '2024-07-19', '2024-08-16', '2024-09-20', '2024-10-18', 
+            # '2024-11-15', '2024-12-20', '2025-01-17', '2025-03-21', 
+            # '2025-06-20', '2025-09-19', '2025-12-19', '2026-01-16', 
+            # '2026-06-18', '2026-12-18'
+        ]
+
+    stock = yf.Ticker(symbol)
+
+    start_date = datetime.now()
+    history = stock.history(period="1d")
+    spot = history['Close'].iloc[-1]
+    heston.S0 = spot
+
+    volumes = []
+    strikes = []
+    prices = []
+    maturities = []
         
-        if useHeston:
-            my_model = StochVol(theta=self.theta, sigma=self.sigma, kappa=self.kappa, drift=self.drift_emm, log_return=self.r) 
-            fk_model = ssm.Bootstrap(ssm=my_model, data=log_returns)  
-            pf = particles.SMC(
-                fk=fk_model, 
-                N=N, 
-                qmc=False, 
-                resampling='systematic', 
-                store_history=False, 
-                verbose=False, 
-                collect=[Moments()]
-            )
-            pf.run()
-        estimation = np.array([m['mean'] for m in pf.summaries.moments])
-        return estimation
-            
+    for exp_date in expiration_dates:
+        option_chain = stock.option_chain(exp_date)
+        options_data = getattr(option_chain, "calls" if option_type.startswith("call") else "puts")
 
-if __name__ == "__main__":
+        volumes.append(options_data['volume'].values)
+        strikes.append(options_data['strike'].values)
+        prices.append(options_data['lastPrice'].values)
 
-    ### Initialisation of the model
+        expiration_date = datetime.strptime(exp_date, '%Y-%m-%d')
+        time_remaining = expiration_date - start_date
+        maturity = time_remaining.days / 365.25
+        liquidity = len(options_data['volume'].values)
+        maturities.append([maturity] * liquidity)
 
-    S0 = 100
-    V0 = 0.06
-    r = 0.05
-    kappa = 1
-    theta = 0.06
-    drift_emm = 0.01 
-    sigma = 0.3
-    rho = -0.5
-    T = 1
-    K = 100
+    volumes = np.hstack(volumes)
+    strikes = np.hstack(strikes)
+    prices = np.hstack(prices)
+    maturities = np.hstack(maturities)
+    nbr_data = len(prices)    
 
-    heston = HestonModel(S0, V0, r, kappa, theta, drift_emm, sigma, rho, T, K)
+    is_nan_volumes = np.isnan(volumes)
+    is_nan_prices = np.isnan(prices)
+    mask = is_nan_volumes | is_nan_prices
+    mask = ~ mask
 
-    print("\nPricing...")
+    x0 = [heston.kappa, heston.theta, heston.sigma, heston.rho, heston.drift_emm, heston.V0]
+    def objective_function(x):
+        heston.theta = x[1]
+        heston.sigma = x[2]
+        heston.rho = x[3]
+        heston.drift_emm = x[4]
+        heston.V0 = x[5]
 
-    ### Price via Monte Carlo
+        model_prices = []
+        for k in range(nbr_data):
+            heston.K = strikes[k]
+            heston.T = maturities[k]
+            model_price, _ = heston.fourier_transform_price()
+            model_prices.append(model_price)
 
-    n = 100
-    N = 10**3
+        model_prices = np.array(model_prices)
+        result = np.sum(
+            volumes[mask] * np.abs(prices[mask] - model_prices[mask])
+        )
 
-    start_time = time.time()
-    result = heston.monte_carlo_price(scheme="euler", n=n, N=N)
-    time_delta = round(time.time() - start_time,4)
-    price_euler = round(result.price, 2)
-    std_euler = round(result.std, 2)
-    infinum_euler = round(result.infinum, 2)
-    supremum_euler = round(result.supremum, 2)
-    print(f"Monte Carlo Euler scheme in {time_delta}s : price ${price_euler}, std {std_euler}, and Confidence interval [{infinum_euler},{supremum_euler}]")
+        return result
 
-    start_time = time.time()
-    result = heston.monte_carlo_price(scheme="milstein", n=n, N=N)
-    time_delta = round(time.time() - start_time,4)
-    price_milstein = round(result.price, 2)
-    std_milstein = round(result.std, 2)
-    infinum_milstein = round(result.infinum, 2)
-    supremum_milstein = round(result.supremum, 2)
-    print(f"Monte Carlo Milstein scheme in {time_delta}s : price ${price_milstein}, std {std_milstein}, and Confidence interval [{infinum_milstein},{supremum_milstein}]")
+    print('Callibration is running...')
+    res = minimize(fun=objective_function, x0=x0)    
 
-    ### Price via Fourier Transform
-
-    start_time = time.time()
-    price_FT, error_FT = heston.fourier_transform_price()
-    time_delta = round(time.time() - start_time,4)
-    infinum = round(price_FT-error_FT, 2)
-    supremum = round(price_FT+error_FT, 2)
-    price_FT = round(price_FT, 2)
-    error_FT = round(error_FT, 8)
-    print(f"Fourier Transform in {time_delta}s : price ${price_FT}, error ${error_FT} , and Confidence interval [{infinum},{supremum}]")
-
-    ### Price via Carr-Madan formula 
-
-    start_time = time.time()
-    price_CM, error_CM = heston.carr_madan_price()
-    time_delta = round(time.time() - start_time,4)
-    infinum = round(price_CM-error_CM, 2)
-    supremum = round(price_CM+error_CM, 2)
-    price_CM = round(price_CM, 2)
-    #error_CM = round(error_CM, 8)
-    print(f"Carr-Madan in {time_delta}s : price ${price_CM}, error ${error_CM} , and Confidence interval [{infinum},{supremum}]")
-
-    print("Pricing...finished\n")
-
-    ### Path simulations
-
-    scheme = 'milstein'
-    heston.plot_simulation(scheme)
-
-    ### Characteristic function
-
-    psi1 = heston.characteristic(j=1)
-    psi2 = heston.characteristic(j=2)
-
-    u = np.arange(start=-20, stop=20,step=0.01)
-
-    x = np.log(S0)
-    v = V0
-    t = T - 1 
+    return res
 
 
-    # 2D plot
-    # Create subplots for real and imaginary parts
-    plt.figure()
-
-    # Plot real part of psi1 and psi2
-    plt.subplot(1, 2, 1)
-    plt.title(r'$\mathfrak{Re}(\psi_1)$ and $\mathfrak{Re}(\psi_2)$')
-    plt.plot(u, np.abs(psi1(x, v, t, u)), label=r'$|\psi_1|$', color='orange', linestyle='--')
-    plt.plot(u, psi1(x, v, t, u).real, label=r'$\psi_1$', color='orange')
-    plt.plot(u, psi2(x, v, t, u).real, label=r'$\psi_2$', color='blue')
-    plt.grid(visible=True)
-    plt.xlabel(r'$u$')
-    plt.ylabel('Real part')
-    plt.legend()
-
-    # Plot imaginary part of psi1 and psi2
-    plt.subplot(1, 2, 2)
-    plt.title(r'$\mathfrak{Im}(\psi_1)$ and $\mathfrak{Im}(\psi_2)$')
-    plt.plot(u, np.abs(psi1(x, v, t, u)), label=r'$|\psi_1|$', color='orange', linestyle='--')
-    plt.plot(u, psi1(x, v, t, u).imag, label=r'$\psi_1$', color='orange')
-    plt.plot(u, psi2(x, v, t, u).imag, label=r'$\psi_2$', color='blue')
-    plt.grid(visible=True)
-    plt.xlabel(r'$u$')
-    plt.ylabel('Imaginary part')
-    plt.legend()
-
-    #plt.tight_layout()
-    plt.show() 
 
 
-    # 3D plot
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
-    ax.plot(u, psi1(x, v, t, u).real, psi1(x, v, t, u).imag, label=r'$\psi_1$', color='orange')
-    ax.plot(u, psi2(x, v, t, u).real, psi2(x, v, t, u).imag, label=r'$\psi_2$', color='blue')
-    ax.set_xticks([-5*i for i in range(6)] + [5*i for i in range(6)])
-    ax.set_yticks([-1, 0, 1])
-    ax.set_zticks([-1, 0, 1])
-    ax.set_xlabel('u')
-    ax.set_ylabel('Real part')
-    ax.set_zlabel('Imaginary part')
-    plt.legend()
-    plt.show()
 
-    ## Integration over R_+
-    psi1 = heston.characteristic(j=1)
-    integrand1 = lambda u : np.real((np.exp(-u * np.log(heston.K) * 1j) * psi1(x, v, t, u))/(u*1j)) 
-    psi2 = heston.characteristic(j=2)
-    integrand2 = lambda u : np.real((np.exp(-u * np.log(heston.K) * 1j) * psi2(x, v, t, u))/(u*1j)) 
 
-    u = np.arange(start=0, stop=40,step=0.01)
 
-    plt.figure()
-    plt.plot(u, integrand1(u) * u**2, label="Integrand 1")
-    plt.plot(u, integrand2(u) * u**2, label="Integrand 2")
-    plt.xlabel(r'u')
-    plt.ylabel(r'Integrand $\times u^2$')
-    plt.legend()
-    plt.grid(visible=True)
-    plt.title(r'Existence of $Q_1$ and $Q_2$')
-    plt.show()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
