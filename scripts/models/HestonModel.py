@@ -2,7 +2,6 @@ import numpy as np
 from numpy import random
 from random import gauss
 from scipy.stats import norm
-random.seed(42)
 from scipy.integrate import quad 
 
 import time
