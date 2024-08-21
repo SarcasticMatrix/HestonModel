@@ -1,4 +1,4 @@
-from scripts.HestonModel import HestonModel
+from scripts.models.HestonModel import HestonModel
 
 import matplotlib.pyplot as plt 
 import time

@@ -1,4 +1,4 @@
-from scripts.HestonModel import HestonModel
+from scripts.models.HestonModel import HestonModel
 import numpy as np
 
 def naive_strategy(
@@ -70,8 +70,8 @@ def optimal_allocate_strategy(
     return allocation
 
 
-from scripts.HestonModel import HestonModel
-from scripts.Portfolio import Portfolio
+from scripts.models.HestonModel import HestonModel
+from scripts.portfolio.Portfolio import Portfolio
 from tqdm import tqdm
 
 import numpy as np

@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
-from scripts.BlackScholes import BlackScholes
+from scripts.models.BlackScholes import BlackScholes
 
 initial = 100
 r = 0.05
@@ -31,7 +31,7 @@ plt.grid(visible=True, which="major", linestyle="--", dashes=(5, 10), color="gra
 plt.minorticks_on()
 plt.grid(which="minor", visible=False)
 plt.title(f'Delta Hedging with Black-Scholes', fontsize=16)
-# plt.show()
+plt.show()
 
 
 
@@ -42,7 +42,7 @@ portfolio, S = blackscholes.delta_hedging(option='call', strike=strike, N=N, hed
 times = np.linspace(0, T, n+1)
 portfolio = portfolio.T
 plt.figure()
-plt.plot(times, portfolio, label='P&L', color='blue', linewidth=1)
+plt.plot(times, portfolio.mean(axis=1), label='P&L', color='blue', linewidth=1)
 plt.xlabel('Time', fontsize=12)
 plt.ylabel('Value [$]', fontsize=12)
 plt.legend(loc='upper left')

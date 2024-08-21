@@ -1,6 +1,5 @@
 import numpy as np
 from numpy import random
-from random import gauss
 from scipy.stats import norm
 from scipy.integrate import quad 
 

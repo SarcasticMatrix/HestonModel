@@ -1,8 +1,21 @@
 import numpy as np
-from scripts.HestonModel import HestonModel
+from scripts.models.HestonModel import HestonModel
 from typing import Literal
 
 class Option:
+    """
+    from scripts.option.Option import Option
+    option = Option(
+        flag='put',
+        strike=K,
+        time_to_maturity=T,
+        interest=r,
+        spot=S0,
+        current_vol=V0
+    )
+    heston = HestonModel(S0, V0, r, kappa, theta, drift_emm, sigma, rho, T, K)
+    price, _ = option.price(heston)
+    """
 
     def __init__(
             self, 
@@ -47,3 +60,4 @@ class Option:
             price = self.price_call(heston)
 
         return price
+

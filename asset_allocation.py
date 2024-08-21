@@ -1,6 +1,6 @@
-from scripts.HestonModel import HestonModel
-from scripts.Portfolio import Portfolio
-from scripts.strategies import time_varying_strategy, naive_strategy, optimal_allocate_strategy, run_strategies
+from scripts.models.HestonModel import HestonModel
+from scripts.portfolio.Portfolio import Portfolio
+from scripts.portfolio.strategies import time_varying_strategy, naive_strategy, optimal_allocate_strategy, run_strategies
 
 import matplotlib.pyplot as plt 
 import numpy as np
