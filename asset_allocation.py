@@ -102,8 +102,8 @@ ax2.plot(time[1:], PnL_opt, label=r'$\pi^\star$', color='purple', linewidth=0.7)
 
 
 ax2.set_xlabel('Time')
-ax2.set_ylabel(r'\textbf{PnL(t)}')
-ax2.set_title(r'\textbf{PnL}')
+ax2.set_ylabel(r'$PnL(t)$')
+ax2.set_title(r'$PnL$')
 ax2.legend()
 ax2.grid(visible=True)
 

@@ -9,11 +9,6 @@ import time
 import matplotlib.pyplot as plt
 from collections import namedtuple
 
-import particles  # core module
-from particles import distributions as dists  # where probability distributions are defined
-from particles import state_space_models as ssm  # where state-space models are defined
-from particles.collectors import Moments
-
 import warnings
 warnings.filterwarnings("ignore")
 
