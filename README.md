@@ -3,12 +3,8 @@
 This Python package implements the Heston model for option pricing and portfolio management using Monte Carlo simulations, the Carr-Madan method, and Fourier transforms. The package also includes functionality for optimal portfolio allocation using control techniques.
 
 We assume that the stock is ruled by the Heston model under real world and martingale measures. Thus, skipping the reasoning from real-world measures $\mathbb P = (\mathbb P_1,\mathbb P_2)$ to martingale measures $\mathbb Q(\lambda) = \{\mathbb Q_1(\lambda),\mathbb Q_2(\lambda)\}$, parametrised by the drift parameter $\lambda$ under the equivalent martingale measure. Using the Cholesky decomposition and dsanov’s Theorem,
-$$
-\begin{aligned}
-    dS_t & = rS_t dt + \sqrt{v_t}S_t \left( \rho dW^{\mathbb Q_1}_t + \sqrt{1-\rho^2} dW^{\mathbb Q_2}_t \right), \\
-    dv_t & = \kappa \left( \theta - v_t \right) dt + \sigma \sqrt{v_t} dW_t^{\mathbb Q_1}. 
-\end{aligned}
-$$
+$$ dS_t & = rS_t dt + \sqrt{v_t}S_t \left( \rho dW^{\mathbb Q_1}_t + \sqrt{1-\rho^2} dW^{\mathbb Q_2}_t \right), $$
+$$ dv_t & = \kappa \left( \theta - v_t \right) dt + \sigma \sqrt{v_t} dW_t^{\mathbb Q_1}. $$
 With $W^{\mathbb Q_1}$ and $W^{\mathbb Q_2}$ orthogonal Wiener processes under martingale measures. 
 
 ## Files
