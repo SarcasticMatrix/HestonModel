@@ -127,7 +127,7 @@ class HestonModel:
         Simulates sample paths and estimates the call price with a simple Monte Carlo Method.
 
         Parameters:
-        - scheme (str): the discretization scheme used
+        - scheme (str): the discretization scheme used ("euler" or "milstein")
         - n (int): number of points in a path
         - N (int): number of simulated paths
 

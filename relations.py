@@ -15,25 +15,6 @@ rho = -0.5
 T = 1
 K = 100
 
-
-################################################################################
-### Interest rate
-prices = []
-rs = np.arange(start=0, stop=0.08, step=0.01) 
-for r_temp in tqdm(rs):
-    heston = HestonModel(S0, V0, r_temp, kappa, theta, drift_emm, sigma, rho, T, K=K)
-    price, error = heston.carr_madan_price()
-    prices.append(price)
-
-plt.figure()
-plt.title(r"Call price as a function of interest rate $r$")
-plt.plot(rs, prices, linewidth=0.7, color='red')
-plt.xlim((0,np.max(rs)))
-plt.xlabel(r'Interest rate ($r$)')
-plt.ylabel("Price [€]")
-plt.grid()
-plt.show()
-
 ################################################################################
 ### Theta 
 theta1 = 0.01
@@ -60,7 +41,7 @@ for K in tqdm(Ks):
 
 
 plt.figure()
-plt.title(r"Call price as a function of price $K$")
+plt.title(r"Call price as a function of price $\theta$")
 
 plt.plot(Ks, prices_sigma1, label=rf'$\theta={theta1}$', linewidth=0.7, color='red')
 plt.plot(Ks, prices_sigma2, label=rf'$\theta={theta2}$', linewidth=0.7, color='blue')

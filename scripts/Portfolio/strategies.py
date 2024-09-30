@@ -77,7 +77,7 @@ from tqdm import tqdm
 import numpy as np
 from tqdm import tqdm
 
-def run_strategies(seeds, portfolio0):
+def run_strategies(seeds:int, portfolio0):
     """
     Run len(seeds) simulations and compute the mean and standard deviation PnL of each strategy 
     """
@@ -109,8 +109,6 @@ def run_strategies(seeds, portfolio0):
         heston = HestonModel(S0, V0, r, kappa, theta, drift_emm, sigma, rho, T, K, premium_volatility_risk, seed)
 
         S, V, _ = heston.simulate(scheme='milstein', n=1000, N=1)
-        S = S.flatten()
-        V = V.flatten()
 
         time = np.linspace(start=0, stop=T, num=len(S))
         dt = time[1] - time[0]
@@ -147,20 +145,20 @@ def run_strategies(seeds, portfolio0):
     PnL3_arr = np.array(PnL3_list)
     PnL_opt_arr = np.array(PnL_opt_list)
 
-    PnL1_mean = np.mean(PnL1_arr)
-    PnL2_mean = np.mean(PnL2_arr)
-    PnL3_mean = np.mean(PnL3_arr)
-    PnL_opt_mean = np.mean(PnL_opt_arr)
+    PnL1_mean = round(np.mean(PnL1_arr),2)
+    PnL2_mean = round(np.mean(PnL2_arr),2)
+    PnL3_mean = round(np.mean(PnL3_arr),2)
+    PnL_opt_mean = round(np.mean(PnL_opt_arr),2)
 
-    PnL1_std = np.std(PnL1_arr, ddof=1)
-    PnL2_std = np.std(PnL2_arr, ddof=1)
-    PnL3_std = np.std(PnL3_arr, ddof=1)
-    PnL_opt_std = np.std(PnL_opt_arr, ddof=1)
+    PnL1_std = round(np.std(PnL1_arr, ddof=1),2)
+    PnL2_std = round(np.std(PnL2_arr, ddof=1),2)
+    PnL3_std = round(np.std(PnL3_arr, ddof=1),2)
+    PnL_opt_std = round(np.std(PnL_opt_arr, ddof=1),2)
         
-    print("Mean and Standard Deviation of PnL for Strategy 1:", (PnL1_mean, PnL1_std))
-    print("Mean and Standard Deviation of PnL for Strategy 2:", (PnL2_mean, PnL2_std))
-    print("Mean and Standard Deviation of PnL for Strategy 3:", (PnL3_mean, PnL3_std))
-    print("Mean and Standard Deviation of PnL for Optimal Strategy:", (PnL_opt_mean, PnL_opt_std))
+    print(f"\nPnL for Strategy 1: {PnL1_mean}$ with a std of {PnL1_std}$")
+    print(f"\nPnL for Strategy 2: {PnL2_mean}$ with a std of {PnL2_std}$")
+    print(f"\nPnL for Bank-only Strategy: {PnL3_mean}$ with a std of {PnL3_std}$")
+    print(f"\nPnL for Optimal Strategy: {PnL_opt_mean}$ with a std of {PnL_opt_std}$")
 
 
 

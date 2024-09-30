@@ -1,4 +1,5 @@
 from scripts.models.HestonModel import HestonModel
+from scripts.models.BlackScholes import BlackScholes
 
 import matplotlib.pyplot as plt 
 import time
@@ -33,7 +34,7 @@ price_euler = round(result.price, 2)
 std_euler = round(result.std, 2)
 infinum_euler = round(result.infinum, 2)
 supremum_euler = round(result.supremum, 2)
-print(f"Monte Carlo Euler scheme in {time_delta}s : price ${price_euler}, std {std_euler}, and Confidence interval [{infinum_euler},{supremum_euler}]")
+print(f"Monte Carlo Euler scheme in {time_delta}s : price ${price_euler}, std {std_euler}, and Confidence interval [{infinum_euler},{supremum_euler}]\n")
 
 start_time = time.time()
 result = heston.monte_carlo_price(scheme="milstein", n=n, N=N)
@@ -42,7 +43,7 @@ price_milstein = round(result.price, 2)
 std_milstein = round(result.std, 2)
 infinum_milstein = round(result.infinum, 2)
 supremum_milstein = round(result.supremum, 2)
-print(f"Monte Carlo Milstein scheme in {time_delta}s : price ${price_milstein}, std {std_milstein}, and Confidence interval [{infinum_milstein},{supremum_milstein}]")
+print(f"Monte Carlo Milstein scheme in {time_delta}s : price ${price_milstein}, std {std_milstein}, and Confidence interval [{infinum_milstein},{supremum_milstein}]\n")
 
 ### Price via Fourier Transform
 
@@ -53,7 +54,7 @@ infinum = round(price_FT-error_FT, 2)
 supremum = round(price_FT+error_FT, 2)
 price_FT = round(price_FT, 2)
 error_FT = round(error_FT, 8)
-print(f"Fourier Transform in {time_delta}s : price ${price_FT}, error ${error_FT} , and Confidence interval [{infinum},{supremum}]")
+print(f"Fourier Transform in {time_delta}s : price ${price_FT}, error ${error_FT} , and Confidence interval [{infinum},{supremum}]\n")
 
 ### Price via Carr-Madan formula 
 
@@ -64,9 +65,9 @@ infinum = round(price_CM-error_CM, 2)
 supremum = round(price_CM+error_CM, 2)
 price_CM = round(price_CM, 2)
 error_CM = round(error_CM, 14)
-print(f"Carr-Madan in {time_delta}s : price ${price_CM}, error ${error_CM} , and Confidence interval [{infinum},{supremum}]")
+print(f"Carr-Madan in {time_delta}s : price ${price_CM}, error ${error_CM} , and Confidence interval [{infinum},{supremum}]\n")
 
-print("Pricing...finished\n")
+print("\nPricing...finished\n")
 
 ### Path simulations
 

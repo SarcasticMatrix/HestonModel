@@ -186,7 +186,7 @@ class BlackScholes:
         if option == 'call':
             delta = norm.cdf(d1)
         elif option == 'put':
-            delta = norm.cdf(d1) - 1
+            delta = norm.cdf(d1) - 1 
         else:
             raise ValueError("Option type must be either 'call' or 'put'.")
 
@@ -286,7 +286,7 @@ class BlackScholes:
 
         # Plot for the stock path
         plt.plot(np.linspace(0, self.T, n + 1), S[0], label='Risky asset', color='blue', linewidth=1)
-        plt.xlabel('Time', fontsize=12)
+        plt.xlabel('Time to expiration', fontsize=12)
         plt.ylabel('Value [$]', fontsize=12)
         plt.legend(loc='upper left')
         plt.grid(visible=True, which="major", linestyle="--", dashes=(5, 10), color="gray", linewidth=0.5, alpha=0.8)
@@ -302,11 +302,12 @@ if __name__ == '__main__':
 
     initial = 100
     r = 0.05
+    mu = 2*r
     volatility = 0.06
     T = 1
 
-    blackscholes = BlackScholes(initial=initial, r=r, volatility=volatility, T=T)
-    # blackscholes.plot_simulation()
+    blackscholes = BlackScholes(initial=initial, r=r, volatility=volatility, mu=mu, T=T)
+    blackscholes.plot_simulation()
 
     initials = np.arange(start=25, stop=175, step=1)
 
