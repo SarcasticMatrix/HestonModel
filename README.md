@@ -7,6 +7,7 @@ We assume that the stock is ruled by the Heston model under real world and marti
 $$dS_t = rS_t dt + \sqrt{v_t}S_t (\rho dW^{Q_1}_t + \sqrt{1-\rho^2} dW^{Q_2}_t),$$
 
 $$dv_t = \kappa (\theta - v_t)dt + \sigma\sqrt{v_t}dW_t^{Q_1}.$$
+
 With $W^{Q_1}$ and $W^{Q_2}$ orthogonal Wiener processes under martingale measures. 
 
 ## Files
