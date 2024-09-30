@@ -16,6 +16,9 @@ With $W^{\mathbb Q_1}$ and $W^{\mathbb Q_2}$ orthogonal Wiener processes under m
 2. `Portfolio.py`: Manages portfolio allocation strategies.
 3. `strategies.py`: Implements different control and optimization strategies for portfolio management.
 
+See 
+1. `pricing.py` for an example of pricing,
+2. `asset_allocation.py` for an example of asset allocation,
 ---
 
 ## HestonModel.py
