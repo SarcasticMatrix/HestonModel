@@ -1,5 +1,5 @@
 # HestonModel Python Package
-https://github.com/SarcasticMatrix/hestonModel
+For the documentation see https://sarcasticmatrix.github.io/hestonModel/
 
 This Python package implements the Heston model for option pricing and portfolio management using Monte Carlo simulations, the Carr-Madan method, and Fourier transforms. The package also includes functionality for optimal portfolio allocation using control techniques.
 
