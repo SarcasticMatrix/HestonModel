@@ -1,5 +1,5 @@
 # HestonModel Python Package
-For the documentation see https://sarcasticmatrix.github.io/hestonModel/
+For the documentation see [Documentation](https://sarcasticmatrix.github.io/hestonModel/).
 
 This Python package implements the Heston model for option pricing and portfolio management using Monte Carlo simulations, the Carr-Madan method, and Fourier transforms. The package also includes functionality for optimal portfolio allocation using control techniques.
 
@@ -15,100 +15,104 @@ With $W^{Q_1}$ and $W^{Q_2}$ orthogonal Wiener processes under martingale measur
 1. `HestonModel.py`: Contains the core class `HestonModel`, which simulates paths and prices options based on the Heston stochastic volatility model.
 2. `Portfolio.py`: Manages portfolio allocation strategies.
 3. `strategies.py`: Implements different control and optimization strategies for portfolio management.
-
-See 
-1. `pricing.py` for an example of pricing,
-2. `asset_allocation.py` for an example of asset allocation,
 ---
 
-## HestonModel.py
+## Pricing
 
-### `class HestonModel`
-The `HestonModel` class simulates stock price paths and variance paths under the Heston stochastic volatility model and allows for the pricing of European call options.
+**Initialisation of the model**
+```
+import matplotlib.pyplot as plt 
+import time
+import numpy as np
+import tqdm
 
-- **Parameters:**
-  - `S0 (float)`: Spot price of the asset ($S_0$).
-  - `V0 (float)`: Initial variance ($v_0$).
-  - `r (float)`: Risk-free interest rate ($r$).
-  - `kappa (float)`: Rate at which variance reverts to its long-term mean ($\kappa$).
-  - `theta (float)`: Long-term variance $\theta$.
-  - `drift_emm (float)`: Drift parameter under the equivalent martingale measure ($\lambda$).
-  - `sigma (float)`: Volatility of variance ($\sigma$).
-  - `rho (float)`: Correlation between the Brownian motions of asset price and variance ($\rho$).
-  - `T (float)`: Time to maturity.
-  - `K (float)`: Strike price of the option.
-  - `premium_volatility_risk (float, optional)`: Premium for volatility risk, default is `0.0`.
-  - `seed (int, optional)`: Random seed for simulations, default is `42`.
+S0 = 100
+V0 = 0.06
+r = 0.05
+kappa = 1
+theta = 0.06
+drift_emm = 0.01 
+sigma = 0.3
+rho = -0.5
+T = 1
+K = 100
 
-#### `monte_carlo_price`
-Simulates sample paths and estimates the call price with a simple Monte Carlo Method.
-- **Parameters:**
-        - scheme (str): the discretization scheme used
-        - n (int): number of points in a path
-        - N (int): number of simulated paths
+heston = Heston(S0, V0, r, kappa, theta, drift_emm, sigma, rho, T, K)
+```
 
-- **Returns:**
-        - result (namedtuple): with the following attributes:
-            - price (float): estimation by Monte Carlo of the call price
-            - standard_deviation (float): standard deviation of the option payoff
-            - infimum (float): infimum of the confidence interval
-            - supremum (float): supremum of the confidence interval
+**Price via Monte Carlo with Euler-Maruyama discretization**
+```
+n = 100 # number of time points
+N = 10**3 # number of path simulations
 
-#### `fourier_transform_price`
-Computes the price of a European call option on the underlying asset S following a Heston model using the Heston formula.
-- **Parameters:**
-        - t (float): time
+start_time = time.time()
+result = heston.monte_carlo_price(scheme="euler", n=n, N=N)
+time_delta = round(time.time() - start_time,4)
+price_euler = round(result.price, 2)
+std_euler = round(result.std, 2)
+infinum_euler = round(result.infinum, 2)
+supremum_euler = round(result.supremum, 2)
+print(f"Monte Carlo Euler scheme in {time_delta}s : price ${price_euler}, std {std_euler}, and Confidence interval [{infinum_euler},{supremum_euler}]\n")
+```
+**Price via Monte Carlo with Milstein discretization**
+```
+start_time = time.time()
+result = heston.monte_carlo_price(scheme="milstein", n=n, N=N)
+time_delta = round(time.time() - start_time,4)
+price_milstein = round(result.price, 2)
+std_milstein = round(result.std, 2)
+infinum_milstein = round(result.infinum, 2)
+supremum_milstein = round(result.supremum, 2)
+print(f"Monte Carlo Milstein scheme in {time_delta}s : price ${price_milstein}, std {std_milstein}, and Confidence interval [{infinum_milstein},{supremum_milstein}]\n")
+```
+**Price via Fourier Transform**
+```
+start_time = time.time()
+price_FT, error_FT = heston.fourier_transform_price()
+time_delta = round(time.time() - start_time,4)
+infinum = round(price_FT-error_FT, 2)
+supremum = round(price_FT+error_FT, 2)
+price_FT = round(price_FT, 2)
+error_FT = round(error_FT, 8)
+print(f"Fourier Transform in {time_delta}s : price ${price_FT}, error ${error_FT} , and Confidence interval [{infinum},{supremum}]\n")
+```
+**Price via Carr-Madan formula**
+```
+start_time = time.time()
+price_CM, error_CM = heston.carr_madan_price()
+time_delta = round(time.time() - start_time,4)
+infinum = round(price_CM-error_CM, 2)
+supremum = round(price_CM+error_CM, 2)
+price_CM = round(price_CM, 2)
+error_CM = round(error_CM, 14)
+print(f"Carr-Madan in {time_delta}s : price ${price_CM}, error ${error_CM} , and Confidence interval [{infinum},{supremum}]\n")
+```
+**Path simulations**
+```
+scheme = 'milstein'
+heston.plot_simulation(scheme)
+```
+**Price surface : relations between price, strike and time to maturity**
+```
+Ks = np.arange(start=20, stop=200, step=1)
+Ts = np.arange(start=0.1, stop=1.1, step=0.1)
 
-- **Returns:**
-        - price (float): option price
-        - error (float): error in the option price computation
+prices_surface = np.zeros((len(Ts), len(Ks)))
 
-#### `carr_madan_price`
-Computes the price of a European call option on the underlying asset S following a Heston model using Carr-Madan Fourier pricing.
-- **Parameters:**
-        - t (float): time, set at 0 by default
+for i, T in tqdm(enumerate(Ts)):
+    for j, K in tqdm(enumerate(Ks)):
+        heston = Heston(S0, V0, r, kappa, theta, drift_emm, sigma, rho, T, K=K)
+        price, _ = heston.carr_madan_price()
+        prices_surface[i, j] = price
 
-- **Returns:**
-        - price (float): option price
-        - error (float): error in the option price computation
+K_mesh, T_mesh = np.meshgrid(Ks, Ts)
 
-        
-
----
-
-Let me proceed with reviewing the other files to extend this documentation.
-
-### Portfolio.py
-
-The `Portfolio` class is used to model portfolio strategies and perform backtests.
-
-#### `class Portfolio`
-- **Parameters:**
-  - `r (float)`: Interest rate.
-  - `dt (float)`: Time step between each reallocation.
-
-#### `grow_bank_account(self, bank_account)`
-Calculates the growth of the bank account based on the interest rate.
-- **Parameters:**
-  - `bank_account (float)`: The current balance in the bank account.
-- **Returns:**
-  - `float`: The updated balance in the bank account after applying interest growth.
-
-#### `grow_stocks_account(self, stocks_account, S_now, S_previous)`
-Updates the stock portfolio by accounting for changes in the stock price.
-- **Parameters:**
-  - `stocks_account (float)`: The current value of the stocks account.
-  - `S_now (float)`: The current stock price.
-  - `S_previous (float)`: The previous stock price.
-- **Returns:**
-  - `float`: The updated stocks account balance.
-
-#### `back_test(self, S, portfolio0, allocation_strategy)`
-Backtests a portfolio strategy based on a sequence of stock prices and an allocation strategy over time.
-- **Parameters:**
-  - `S (np.array)`: The path of the stock prices over time.
-  - `portfolio0 (float)`: The initial value of the portfolio.
-  - `allocation_strategy (np.array)`: Allocation strategy over time; the same size as `S`.
-- **Returns:**
-  - `bank_account (np.array)`: Bank account value over time.
-  - `stocks_account (np.array)`: Stocks account value over time.
+fig = plt.figure()
+ax = fig.add_subplot(111, projection='3d')
+ax.plot_surface(K_mesh, T_mesh, prices_surface, cmap='viridis')
+ax.set_title('Surface de prix en fonction du strike et du temps de maturité')
+ax.set_xlabel(r'Strike ($K$)')
+ax.set_ylabel(r'Time to maturity ($T$)')
+ax.set_zlabel('Price')
+plt.show()
+```

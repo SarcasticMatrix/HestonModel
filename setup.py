@@ -7,9 +7,9 @@ long_description = (this_directory / "README.md").read_text()
 
 setup(
     name='hestonModel',
-    version='0.1.1',
+    version='0.1.2',
     author="Théophile Schmutz",
-    url="https://github.com/SarcasticMatrix/hestonModel",
+    url="https://sarcasticmatrix.github.io/hestonModel/",
     description="Heston model for option pricing and portfolio management using Monte Carlo simulations, the Carr-Madan method, and Fourier transforms",
     long_description=long_description,
     long_description_content_type='text/markdown',
