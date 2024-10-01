@@ -69,10 +69,10 @@ run_strategies(seeds, portfolio0=S0)
 
 fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8), sharex=True)  
 
-ax1.plot(time, portfolio_value1, label='NS 50% bank account', color='blue', linewidth=1)
-ax1.plot(time, portfolio_value2, label='NS 70% bank account', color='green', linewidth=1)
-ax1.plot(time, portfolio_value3, label='NS 100% bank account', color='red', linewidth=1)
-ax1.plot(time, portfolio_value_optimal, label=r'Optimal strategy', color='purple', linewidth=1)
+ax1.plot(time, portfolio_value1, label=r'$\pi_{50\%}$', color='blue', linewidth=1)
+ax1.plot(time, portfolio_value2, label=r'$\pi_{75\%}$', color='green', linewidth=1)
+ax1.plot(time, portfolio_value3, label=r'$\pi_{100\%}$', color='red', linewidth=1)
+ax1.plot(time, portfolio_value_optimal, label=r'$\pi^\star$', color='purple', linewidth=1)
 
 ax1.plot(time, S, label='Stock', color='black', linewidth=1)
 ax1.set_ylabel('Value [currency unit]')
@@ -84,12 +84,20 @@ ax1.grid(visible=True)
 PnL1 = np.diff(portfolio_value1)
 PnL2 = np.diff(portfolio_value2)
 PnL3 = np.diff(portfolio_value3)
-
-ax2.plot(time[1:], PnL1, label=r'$\pi_1$', color='blue', linewidth=0.7)
-ax2.plot(time[1:], PnL2, label=r'$\pi_2$', color='green', linewidth=0.7)
-ax2.plot(time[1:], PnL3, label=r'$\pi_3$', color='red', linewidth=0.7)
-
 PnL_opt = np.diff(portfolio_value_optimal)
+
+print(
+    "Total variation of the strategies",
+    f"\n PnL1: {round(np.mean(PnL1**2),2)}",
+    f"\n PnL2: {round(np.mean(PnL2**2),2)}"
+    f"\n PnL3: {round(np.mean(PnL3**2),2)}"    
+    f"\n PnL opt: {round(np.mean(PnL_opt**2),2)}"
+)
+
+ax2.plot(time[1:], PnL1, label=r'$\pi_{50\%}$', color='blue', linewidth=0.7)
+ax2.plot(time[1:], PnL2, label=r'$\pi_{75\%}$', color='green', linewidth=0.7)
+ax2.plot(time[1:], PnL3, label=r'$\pi_{100\%}$', color='red', linewidth=0.7)
+
 ax2.plot(time[1:], PnL_opt, label=r'$\pi^\star$', color='purple', linewidth=0.7)
 
 
@@ -99,7 +107,7 @@ ax2.set_title(r'$PnL$')
 ax2.legend()
 ax2.grid(visible=True)
 
-plt.suptitle('Naive Strategy (NS) and Optimal Strategy under Heston')
+plt.suptitle('Asset allocation under Heston')
 plt.tight_layout()  
 plt.show()
 
