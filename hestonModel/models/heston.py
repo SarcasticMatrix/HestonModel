@@ -3,7 +3,6 @@ from numpy import random
 from scipy.stats import norm
 from scipy.integrate import quad 
 
-import time
 import matplotlib.pyplot as plt
 from collections import namedtuple
 
@@ -13,15 +12,107 @@ warnings.filterwarnings("ignore")
 class Heston:
     """
     Class to represent a Heston Model: can simulate trajectories and price call options with this underlying.
+
+    The Heston model is a popular stochastic volatility model used to describe the evolution of asset prices,
+    particularly in the context of options pricing. This class allows for the simulation of price paths
+    as well as the pricing of European call options using both Monte Carlo simulations and Fourier transform techniques.
+
+    Attributes:
+    - spot (float): Spot price of the underlying asset.
+    - vol_initial (float): Initial variance of the asset's returns.
+    - r (float): Risk-free interest rate.
+    - kappa (float): Speed of mean reversion of the variance.
+    - theta (float): Long-term average variance.
+    - drift_emm (float): Drift term for the equivalent martingale measure.
+    - sigma (float): Volatility of the variance process.
+    - rho (float): Correlation between the Brownian motions driving the asset and variance.
+    - T (float): Time to maturity for the options being priced.
+    - K (float): Strike price of the options.
+    - premium_volatility_risk (float): Premium for volatility risk (default is 0.0).
+    - seed (int): Seed for random number generation (default is 42).
+
+    Methods:
+    - simulate(self, scheme: str = "euler", n: int = 100, N: int = 1000):
+        Simulates and returns several simulated paths following the Heston model.
+    - monte_carlo_price(self, scheme: str = "euler", n: int = 100, N: int = 1000):
+        Simulates sample paths and estimates the call price with a simple Monte Carlo Method.
+    - fourier_transform_price(self, t=0):
+        Computes the price of a European call option on the underlying asset S following a Heston model using the Heston formula.
+    - carr_madan_price(self):
+        Computes the price of a European call option on the underlying asset S following a Heston model using Carr-Madan Fourier pricing.
+    - plot_simulation(self, scheme: str = 'euler', n: int = 1000):
+        Plots the simulation of a Heston model trajectory.
+    - price_surface(self):
+        Plot the Price of call option as a function of strike and time to maturity.
+
+    Examples:
+        # Parameters for the Heston model
+        S0 = 100.0            # Initial spot price
+        V0 = 0.06             # Initial volatility
+        r = 0.05              # Risk-free interest rate
+        kappa = 1.0           # Mean reversion rate
+        theta = 0.06          # Long-term volatility
+        drift_emm = 0.01      # Drift term
+        sigma = 0.3           # Volatility of volatility
+        rho = -0.5            # Correlation between asset and volatility
+        T = 1.0               # Time to maturity in years
+        K = 100.0             # Strike price
+
+        # Create a Heston instance
+        heston = Heston(S0, V0, r, kappa, theta, drift_emm, sigma, rho, T, K)
+
+        print("\nPricing...")
+
+        ### Price via Monte Carlo
+        n = 100               # Number of paths
+        N = 1000              # Number of time steps
+
+        # Euler scheme pricing
+        result = heston.monte_carlo_price(scheme="euler", n=n, N=N)
+        price_euler = round(result.price, 2)
+        std_euler = round(result.std, 2)
+        infinum_euler = round(result.infinum, 2)
+        supremum_euler = round(result.supremum, 2)
+        print(f"Monte Carlo Euler scheme: price ${price_euler}, std {std_euler}, and Confidence interval [{infinum_euler},{supremum_euler}]\n")
+
+        # Milstein scheme pricing
+        result = heston.monte_carlo_price(scheme="milstein", n=n, N=N)
+        price_milstein = round(result.price, 2)
+        std_milstein = round(result.std, 2)
+        infinum_milstein = round(result.infinum, 2)
+        supremum_milstein = round(result.supremum, 2)
+        print(f"Monte Carlo Milstein scheme: price ${price_milstein}, std {std_milstein}, and Confidence interval [{infinum_milstein},{supremum_milstein}]\n")
+
+        ### Price via Fourier Transform
+        price_FT, error_FT = heston.fourier_transform_price()
+        infinum = round(price_FT - error_FT, 2)
+        supremum = round(price_FT + error_FT, 2)
+        price_FT = round(price_FT, 2)
+        error_FT = round(error_FT, 8)
+        print(f"Fourier Transform: price ${price_FT}, error ${error_FT}, and Confidence interval [{infinum},{supremum}]\n")
+
+        ### Price via Carr-Madan formula 
+        price_CM, error_CM = heston.carr_madan_price()
+        infinum = round(price_CM - error_CM, 2)
+        supremum = round(price_CM + error_CM, 2)
+        price_CM = round(price_CM, 2)
+        error_CM = round(error_CM, 14)
+        print(f"Carr-Madan: price ${price_CM}, error ${error_CM}, and Confidence interval [{infinum},{supremum}]\n")
+
+        print("\nPricing...finished\n")
+
+        ### Path simulations
+        scheme = 'milstein'
+        heston.plot_simulation(scheme)
     """
     
-    def __init__(self, S0, V0, r, kappa, theta, drift_emm, sigma, rho, T, K, premium_volatility_risk = 0.0, seed=42):
+    def __init__(self, spot, vol_initial, r, kappa, theta, drift_emm, sigma, rho, T, K, premium_volatility_risk = 0.0, seed=42):
         """
         Initialize the Heston Model with specified parameters.
 
         Parameters:
-        - S0 (float): spot price
-        - V0 (float): initial variance
+        - spot (float): spot price
+        - vol_initial (float): initial variance
         - r (float): interest rate
         - kappa (float): mean reversion speed
         - theta (float): long term variance
@@ -35,8 +126,8 @@ class Heston:
         """
 
         # Simulation parameters
-        self.S0 = S0                # spot price
-        self.V0 = V0                # initial variance
+        self.spot = spot                # spot price
+        self.vol_initial = vol_initial                # initial variance
 
         # Model parameters
         self.kappa = kappa          # mean reversion speed
@@ -58,27 +149,26 @@ class Heston:
                 n: int = 100, 
                 N:int = 1000,
         ) -> tuple:
-        # generateHestonPathEulerDisc and generateHestonPathMilsteinDisc
         """
-        Simulates and returns several simulated paths following the Heston model.
+        Simulates multiple paths according to the Heston model.
 
         Parameters:
-        - scheme (str): the discretization scheme used
-        - n (int): number of points in a path
-        - N (int): number of simulated paths
+        - scheme (str): The discretization method to be used (e.g., "euler" or "milstein").
+        - n (int): The number of discrete points in each path.
+        - N (int): The total number of simulated paths.
 
         Returns:
-        - S (np.array): stock paths
-        - V (np.array): variance paths
-        - null_variance (int): number of times the simulated variance has been null
+        - S (np.array): Array of simulated stock price paths.
+        - V (np.array): Array of simulated variance paths.
+        - null_variance (int): Count of instances where simulated variance equals zero.
         """
         random.seed(self.seed)
 
         dt = self.T / n
         S = np.zeros((N, n + 1))
         V = np.zeros((N, n + 1))
-        S[:, 0] = self.S0
-        V[:, 0] = self.V0
+        S[:, 0] = self.spot
+        V[:, 0] = self.vol_initial
 
         null_variance = 0
 
@@ -122,21 +212,22 @@ class Heston:
                                n: int = 100,
                                N: int = 1000
                             ) -> float:
-        # priceHestonCallViaEulerMC and priceHestonCallViaMilsteinMC
         """
-        Simulates sample paths and estimates the call price with a simple Monte Carlo Method.
+        Simulates paths to estimate the price of a European call option using the Monte Carlo method.
+
+        This method calculates the option price by averaging the discounted payoffs from simulated asset price paths.
 
         Parameters:
-        - scheme (str): the discretization scheme used ("euler" or "milstein")
-        - n (int): number of points in a path
-        - N (int): number of simulated paths
+        - scheme (str): The discretization method used ("euler" or "milstein").
+        - n (int): Number of discrete points in a path.
+        - N (int): Number of paths to simulate.
 
         Returns:
-        - result (namedtuple): with the following attributes:
-            - price (float): estimation by Monte Carlo of the call price
-            - standard_deviation (float): standard deviation of the option payoff
-            - infimum (float): infimum of the confidence interval
-            - supremum (float): supremum of the confidence interval
+        - result (namedtuple): Contains the following:
+            - price (float): Estimated price of the call option.
+            - standard_deviation (float): Standard deviation of the option payoffs.
+            - infimum (float): Lower bound of the confidence interval.
+            - supremum (float): Upper bound of the confidence interval.
         """
         random.seed(self.seed)
 
@@ -160,13 +251,15 @@ class Heston:
             j: int
         ) -> float:
         """
-        Create the characteristic function Psi_j(x, v, t; u), for a given (x, v, t).
+        Creates the characteristic function Psi_j(x, v, t; u) for a given (x, v, t).
+
+        This function returns the characteristic function based on the index provided.
 
         Parameters:
-        - j (int): index of the characteristic function
+        - j (int): Index of the characteristic function (must be 1 or 2).
 
         Returns:
-        - callable: characteristic function
+        - callable: The characteristic function.
         """
 
         if j == 1 : 
@@ -193,18 +286,20 @@ class Heston:
             t = 0
     ):
         """
-        Computes the price of a European call option on the underlying asset S following a Heston model using the Heston formula.
+        Calculates the price of a European call option using the Heston formula.
+
+        This method computes the option price by evaluating the integral of the characteristic function.
 
         Parameters:
-        - t (float): time
+        - t (float): The current time for pricing (default is 0).
 
         Returns:
-        - price (float): option price
-        - error (float): error in the option price computation
+        - price (float): The calculated option price.
+        - error (float): The error associated with the option price calculation.
         """
 
-        x = np.log(self.S0)
-        v = self.V0
+        x = np.log(self.spot)
+        v = self.vol_initial
 
         psi1 = self.characteristic(j=1)
         integrand1 = lambda u : np.real((np.exp(-u * np.log(self.K) * 1j) * psi1(x, v, t, u))/(u*1j)) 
@@ -216,21 +311,24 @@ class Heston:
         Q2 = 1/2 + 1/np.pi * quad(func = integrand2, a = 0, b = 1000)[0]
         error2 = 1/np.pi * quad(func = integrand2, a = 0, b = 1000)[1]
 
-        price = self.S0 * Q1 - self.K * np.exp(-self.r * (self.T - t)) * Q2
-        error = self.S0 * error1 + self.K * np.exp(-self.r * (self.T - t)) * error2
+        price = self.spot * Q1 - self.K * np.exp(-self.r * (self.T - t)) * Q2
+        error = self.spot * error1 + self.K * np.exp(-self.r * (self.T - t)) * error2
         return price, error
 
     def carr_madan_price(self):
         """
-        Computes the price of a European call option on the underlying asset S following a Heston model using Carr-Madan Fourier pricing.
+        Computes the price of a European call option using the Carr-Madan Fourier pricing method.
+
+        This method employs the Carr-Madan approach, leveraging the characteristic function to calculate
+        the option price.
 
         Returns:
-        - price (float): option price
-        - error (float): error in the option price computation
+        - price (float): The calculated option price.
+        - error (float): The error associated with the option price calculation.
         """
         
-        x = np.log(self.S0)
-        v = self.V0
+        x = np.log(self.spot)
+        v = self.vol_initial
         t = self.T - 1
         alpha = 0.3
 
@@ -246,11 +344,13 @@ class Heston:
 
     def plot_simulation(self, scheme : str = 'euler', n: int = 1000):
         """
-        Plots the simulation of a Heston model trajectory.
+        Visualizes the trajectory of the Heston model through simulation.
+
+        This method generates plots for the simulated asset price and variance over time.
 
         Parameters:
-        - scheme (str): the discretization scheme used (euler or milstein)
-        - n (int): number of points in a path
+        - scheme (str): The discretization method applied ("euler" or "milstein").
+        - n (int): The number of points to include in each simulation path.
         """
         random.seed(self.seed)
         
@@ -279,100 +379,174 @@ class Heston:
         plt.tight_layout()
         plt.show()
     
-        return S, V 
+        return S, V
+    
+    def price_surface(self):
+        """
+        Visualizes the price of the call option in relation to strike price and time to maturity.
 
+        This method creates a 3D surface plot illustrating how the call option price varies 
+        based on different strike prices and times to maturity.
+        """
+        Ks = np.arange(start=20, stop=200, step=0.5)
+        Ts = np.arange(start=0.1, stop=1.1, step=0.1)
 
+        prices_surface = np.zeros((len(Ts), len(Ks)))
 
+        for i, T in enumerate(Ts):
+            for j, K in enumerate(Ks):
+                heston = Heston(
+                    self.spot, self.vol_initial, self.r, self.kappa, self.theta, self.drift_emm, self.sigma, self.rho, 
+                    T=T, K=K)
+                price, _ = heston.carr_madan_price()
+                prices_surface[i, j] = price
 
-import yfinance as yf
+        K_mesh, T_mesh = np.meshgrid(Ks, Ts)
+
+        fig = plt.figure()
+        ax = fig.add_subplot(111, projection='3d')
+        ax.plot_surface(K_mesh, T_mesh, prices_surface, edgecolor='royalblue', lw=0.5, rstride=8, cstride=8, alpha=0.3)
+        ax.set_title('Call price as a function of strike and time to maturity')
+        ax.set_xlabel(r'Strike ($K$)')
+        ax.set_ylabel(r'Time to maturity ($T$)')
+        ax.set_zlabel('Price')
+        ax.grid(visible=True,which="major",linestyle="--",dashes=(5, 10),color="gray",linewidth=0.5,alpha=0.8)
+        plt.show()
+
 from datetime import datetime
 from scipy.optimize import minimize
+from hestonModel.option.data import get_options_data
+
 def calibrate(
+    flag_option: str, 
     heston: Heston,
-    option_type: str, 
     symbol: str = 'MSFT', 
-    expiration_dates: list = None
 ):
     """
-    Calibrer le modèle de Heston sur plusieurs dates d'expiration et strike associé.
+    Calibrates the Heston model using options data for various expiration dates and associated strikes.
+
+    Parameters:
+    - flag_option (str): Specifies the type of option (e.g., call or put).
+    - heston (Heston): An instance of the Heston model to calibrate.
+    - symbol (str): The stock symbol for which to gather options data; defaults to 'MSFT' for Microsoft Corporation.
     
-    - expiration_dates : list of str
-        Liste des dates d'expiration au format 'YYYY-MM-DD'.
+    Returns:
+    - res: The result of the optimization process, containing the optimized parameters for the Heston model.
     """
-
-    if expiration_dates is None:
-        expiration_dates = [
-            '2024-05-24', '2024-05-31', 
-            '2024-06-07', '2024-06-14', '2024-06-21', '2024-06-28', 
-            # '2024-07-19', '2024-08-16', '2024-09-20', '2024-10-18', 
-            # '2024-11-15', '2024-12-20', '2025-01-17', '2025-03-21', 
-            # '2025-06-20', '2025-09-19', '2025-12-19', '2026-01-16', 
-            # '2026-06-18', '2026-12-18'
-        ]
-
-    stock = yf.Ticker(symbol)
+    # to do : implement for put options
 
     start_date = datetime.now()
-    history = stock.history(period="1d")
-    spot = history['Close'].iloc[-1]
-    heston.S0 = spot
 
-    volumes = []
-    strikes = []
-    prices = []
-    maturities = []
-        
-    for exp_date in expiration_dates:
-        option_chain = stock.option_chain(exp_date)
-        options_data = getattr(option_chain, "calls" if option_type.startswith("call") else "puts")
+    options_data, spot = get_options_data(symbol=symbol, flag_option=flag_option)
+    heston.spot = spot
 
-        volumes.append(options_data['volume'].values)
-        strikes.append(options_data['strike'].values)
-        prices.append(options_data['lastPrice'].values)
+    # TEST
+    mask = options_data['Volume'] > 0.1 * len(options_data)
+    options_data = options_data.loc[mask]
 
-        expiration_date = datetime.strptime(exp_date, '%Y-%m-%d')
-        time_remaining = expiration_date - start_date
-        maturity = time_remaining.days / 365.25
-        liquidity = len(options_data['volume'].values)
-        maturities.append([maturity] * liquidity)
+    volumes = options_data["Volume"].values
+    strikes = options_data["Strike"].values
+    prices = options_data["Call Price"].values
+    maturities = options_data["Time to Maturity"].values
 
-    volumes = np.hstack(volumes)
-    strikes = np.hstack(strikes)
-    prices = np.hstack(prices)
-    maturities = np.hstack(maturities)
-    nbr_data = len(prices)    
-
-    is_nan_volumes = np.isnan(volumes)
-    is_nan_prices = np.isnan(prices)
-    mask = is_nan_volumes | is_nan_prices
-    mask = ~ mask
-
-    x0 = [heston.kappa, heston.theta, heston.sigma, heston.rho, heston.drift_emm, heston.V0]
+    x0 = [
+        heston.kappa, 
+        heston.theta, 
+        heston.sigma, 
+        heston.rho, 
+        heston.drift_emm, 
+        heston.vol_initial
+    ]
+    
     def objective_function(x):
+        heston.kappa = x[0]
         heston.theta = x[1]
         heston.sigma = x[2]
         heston.rho = x[3]
         heston.drift_emm = x[4]
-        heston.V0 = x[5]
+        heston.vol_initial = x[5]
 
         model_prices = []
-        for k in range(nbr_data):
-            heston.K = strikes[k]
-            heston.T = maturities[k]
+        for i in range(len(options_data)):
+            heston.K = strikes[i]
+            heston.T = maturities[i]
             model_price, _ = heston.fourier_transform_price()
             model_prices.append(model_price)
 
         model_prices = np.array(model_prices)
+        weights = volumes / np.sum(volumes)
+        
         result = np.sum(
-            volumes[mask] * np.abs(prices[mask] - model_prices[mask])
-        )
+            weights * (prices - model_prices)**2
+        ) 
 
         return result
 
     print('Callibration is running...')
-    res = minimize(fun=objective_function, x0=x0)    
+    res = minimize(fun=objective_function, x0=x0, method='Nelder-Mead')    
 
     return res
+
+if __name__ == '__main__':
+
+    # Parameters for the Heston model
+    S0 = 100.0            # Initial spot price
+    V0 = 0.06             # Initial volatility
+    r = 0.05              # Risk-free interest rate
+    kappa = 1.0           # Mean reversion rate
+    theta = 0.06          # Long-term volatility
+    drift_emm = 0.01      # Drift term
+    sigma = 0.3           # Volatility of volatility
+    rho = -0.5            # Correlation between asset and volatility
+    T = 1.0               # Time to maturity in years
+    K = 100.0             # Strike price
+
+    # Create a Heston instance
+    heston = Heston(S0, V0, r, kappa, theta, drift_emm, sigma, rho, T, K)
+
+    print("\nPricing...")
+
+    ### Price via Monte Carlo
+    n = 100               # Number of paths
+    N = 1000              # Number of time steps
+
+    # Euler scheme pricing
+    result = heston.monte_carlo_price(scheme="euler", n=n, N=N)
+    price_euler = round(result.price, 2)
+    std_euler = round(result.std, 2)
+    infinum_euler = round(result.infinum, 2)
+    supremum_euler = round(result.supremum, 2)
+    print(f"Monte Carlo Euler scheme: price ${price_euler}, std {std_euler}, and Confidence interval [{infinum_euler},{supremum_euler}]\n")
+
+    # Milstein scheme pricing
+    result = heston.monte_carlo_price(scheme="milstein", n=n, N=N)
+    price_milstein = round(result.price, 2)
+    std_milstein = round(result.std, 2)
+    infinum_milstein = round(result.infinum, 2)
+    supremum_milstein = round(result.supremum, 2)
+    print(f"Monte Carlo Milstein scheme: price ${price_milstein}, std {std_milstein}, and Confidence interval [{infinum_milstein},{supremum_milstein}]\n")
+
+    ### Price via Fourier Transform
+    price_FT, error_FT = heston.fourier_transform_price()
+    infinum = round(price_FT - error_FT, 2)
+    supremum = round(price_FT + error_FT, 2)
+    price_FT = round(price_FT, 2)
+    error_FT = round(error_FT, 8)
+    print(f"Fourier Transform: price ${price_FT}, error ${error_FT}, and Confidence interval [{infinum},{supremum}]\n")
+
+    ### Price via Carr-Madan formula 
+    price_CM, error_CM = heston.carr_madan_price()
+    infinum = round(price_CM - error_CM, 2)
+    supremum = round(price_CM + error_CM, 2)
+    price_CM = round(price_CM, 2)
+    error_CM = round(error_CM, 14)
+    print(f"Carr-Madan: price ${price_CM}, error ${error_CM}, and Confidence interval [{infinum},{supremum}]\n")
+
+    print("\nPricing...finished\n")
+
+    ### Path simulations
+    scheme = 'milstein'
+    heston.plot_simulation(scheme)
 
 
 
